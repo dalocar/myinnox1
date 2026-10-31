@@ -17,3 +17,4 @@ INNODIGYM or its vendor.
    explicit maintainer decision.
 7. Forked PRs run CI without secrets. Workflows from first-time contributors
    need a maintainer's approval to run.
+

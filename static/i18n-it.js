@@ -321,6 +321,8 @@
     "Warm-up": "Riscaldamento",
     "Strength": "Forza",
     "Part {n}": "Parte {n}",
+    "Kept on save, edit in the official app. {list}": "Mantenuti al salvataggio; modificali nell'app ufficiale. {list}",
+    "Custom": "Personalizzata",
     "Part": "Parte",
     "Attributes": "Attributi",
     "Equipment-based": "Con attrezzatura",

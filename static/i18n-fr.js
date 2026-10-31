@@ -321,6 +321,8 @@
     "Warm-up": "Échauffement",
     "Strength": "Force",
     "Part {n}": "Partie {n}",
+    "Kept on save, edit in the official app. {list}": "Conservés à l'enregistrement ; modifiez-les dans l'app officielle. {list}",
+    "Custom": "Personnalisé",
     "Part": "Partie",
     "Attributes": "Attributs",
     "Equipment-based": "Avec équipement",

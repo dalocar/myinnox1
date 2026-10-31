@@ -173,7 +173,7 @@
     let existing = [], libIds = null;
     try { existing = (await fetchList()).map((x) => x.name); }
     catch (e) { showImportError(t("Import failed: {msg}", { msg: C.safeMessage(e, t("The server rejected the request")) }), openerEl); return; }
-    try { libIds = new Set((await getActionLibrary()).map((a) => a.id)); } catch { /* skip the library check */ }
+    try { libIds = new Set((await getPickableActions()).map((a) => a.id)); } catch { /* skip the library check */ }
 
     const used = existing.slice();
     const rows = parsed.programs.map((entry, i) => {

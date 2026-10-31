@@ -20,6 +20,7 @@ const $ = (id) => document.getElementById(id);
 let currentCourse = null; // full object from /course/custom/detail (or a blank template), mutated in place
 let currentProfile = null;
 let actionLibrary = null; // lazy-loaded, cached full action list
+let customActionList = null; // lazy-loaded, cached own custom actions (never in the default list)
 let coverOptions = null;
 
 function toast(msg, isErr) {
@@ -96,6 +97,22 @@ async function getActionLibrary() {
   const res = await api("/action/list");
   actionLibrary = res.data || [];
   return actionLibrary;
+}
+
+// Built-in library plus the user's custom actions (which /action/list only returns with
+// ?custom=true). Custom ones come first. Used wherever a step can be added or validated.
+async function getPickableActions() {
+  const lib = await getActionLibrary();
+  if (!customActionList) {
+    const res = await api("/action/list?custom=true");
+    customActionList = (res.data || []).filter((a) => a.custom);
+  }
+  return customActionList.concat(lib);
+}
+
+function invalidateActionCaches() {
+  actionLibrary = null;
+  customActionList = null;
 }
 
 async function getCoverOptions() {
@@ -319,6 +336,12 @@ function weightCell(step, i) {
 function renderStepsTable() {
   const body = $("steps-body");
   body.innerHTML = "";
+  // Warm-up and stretch steps (added in the official app) are kept untouched on save but not editable here.
+  const extra = [["Warm up", currentCourse.warmUpStepList], ["Stretch", currentCourse.relaxStepList]]
+    .filter(([, l]) => Array.isArray(l) && l.length)
+    .map(([label, l]) => `${t(label)}: ${l.map((s) => s.actionName).join(", ")}`);
+  $("steps-extra").hidden = !extra.length;
+  $("steps-extra").textContent = extra.length ? t("Kept on save, edit in the official app. {list}", { list: extra.join(" · ") }) : "";
   const total = (currentCourse.mainStepList || []).length;
   (currentCourse.mainStepList || []).forEach((step, i) => {
     const tr = document.createElement("tr");
@@ -555,7 +578,7 @@ function addStepFromAction(a) {
     mode: 0,
     modeParam: "{}",
     breathTip: a.breathTip,
-    custom: false,
+    custom: !!a.custom,
     duration: 12,
   });
   renderStepsTable();
@@ -645,7 +668,7 @@ async function openActionPicker() {
   pickerActiveGroups = new Set();
   $("picker-results").innerHTML = t("Loading…");
   try {
-    pickerResults = await getActionLibrary();
+    pickerResults = await getPickableActions();
     renderPickerChips();
     applyPickerFilter();
     $("picker-search").focus();
@@ -707,7 +730,7 @@ function renderPickerResults(items) {
     row.className = "picker-row";
     row.innerHTML = `
       <img src="${escapeHtml(a.picUrl || "")}" alt="">
-      <div><div>${escapeHtml(a.name)}</div><div class="meta">${escapeHtml((a.muscleParts || ""))}</div></div>
+      <div><div>${escapeHtml(a.name)}</div><div class="meta">${a.custom ? escapeHtml(t("Custom")) + " · " : ""}${escapeHtml((a.muscleParts || ""))}</div></div>
     `;
     row.onclick = () => {
       addStepFromAction(a);
@@ -782,6 +805,7 @@ async function deleteAction(id) {
   try {
     await api(`/action/delete/${id}`, { method: "POST" });
     toast(t("Deleted."));
+    invalidateActionCaches();
     loadActions();
   } catch (e) {
     toast(t("Delete failed: {msg}", { msg: e.message }), true);
@@ -854,7 +878,7 @@ $("action-add-form").addEventListener("submit", async (e) => {
     $("action-add-form").reset();
     Object.assign(caForm, { parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false });
     renderCaChips();
-    actionLibrary = null; // invalidate cache so the new action shows up in the picker too
+    invalidateActionCaches(); // so the new action shows up in the picker too
     loadActions();
   } catch (e) {
     status.textContent = t("Failed: {msg}", { msg: e.message });
@@ -1031,7 +1055,7 @@ $("history-refresh-btn").addEventListener("click", loadHistory);
 // unsaved state (only the chrome/labels are redrawn); lists reload from the API
 // because action/course names come back translated for the requested languageId.
 I18N.onChange.push(() => {
-  actionLibrary = null;
+  invalidateActionCaches();
   coverOptions = null;
   if (currentEmail) showLoggedIn(currentEmail);
   if (activeTab === "programs" && currentCourse && !$("editor").hidden) {

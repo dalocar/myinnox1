@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 52"><ellipse cx="20" cy="49" rx="19" ry="3" fill="var(--fx-ink, #120d1a)" opacity=".5"/>
+<path d="M5 48V19Q5 4 20 4T35 19V48Z" fill="var(--fx-stone, #6d6485)" stroke="var(--fx-purple-d, #3a2850)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M9 44V19Q9 8 20 8" fill="none" stroke="var(--fx-stone-hi, #9a90b8)" stroke-width="2" stroke-linecap="round"/>
+<path class="rip" d="M20 16V32M14 22H26" stroke="var(--fx-ink, #120d1a)" stroke-width="3.4" stroke-linecap="round" opacity=".75"/>
+<path d="M2 48Q8 43 12 48M28 48Q33 43 38 48" fill="none" stroke="var(--fx-slime, #9dff4a)" stroke-width="2.4" stroke-linecap="round"/></svg>

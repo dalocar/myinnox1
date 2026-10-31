@@ -1,0 +1,122 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "latestBadges": [
+      {
+        "id": 9,
+        "type": 3,
+        "target": 50000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_3.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_3.png",
+        "receiveTime": "2026/10/18",
+        "received": true
+      },
+      {
+        "id": 8,
+        "type": 3,
+        "target": 20000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_2.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_2.png",
+        "receiveTime": "2026/10/17",
+        "received": true
+      },
+      {
+        "id": 7,
+        "type": 3,
+        "target": 5000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_1.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_1.png",
+        "receiveTime": "2026/10/16",
+        "received": true
+      }
+    ],
+    "allBadges": [
+      {
+        "id": 1,
+        "type": 1,
+        "target": 1000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/consume_active_1.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/consume_inactive_1.png",
+        "receiveTime": "2026/10/10",
+        "received": true
+      },
+      {
+        "id": 2,
+        "type": 1,
+        "target": 3000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/consume_active_2.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/consume_inactive_2.png",
+        "receiveTime": "2026/10/11",
+        "received": true
+      },
+      {
+        "id": 3,
+        "type": 1,
+        "target": 10000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/consume_active_3.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/consume_inactive_3.png",
+        "receiveTime": "2026/10/12",
+        "received": true
+      },
+      {
+        "id": 4,
+        "type": 2,
+        "target": 100,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/duration_active_1.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/duration_inactive_1.png",
+        "receiveTime": "2026/10/13",
+        "received": true
+      },
+      {
+        "id": 5,
+        "type": 2,
+        "target": 300,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/duration_active_2.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/duration_inactive_2.png",
+        "receiveTime": "2026/10/14",
+        "received": true
+      },
+      {
+        "id": 6,
+        "type": 2,
+        "target": 1000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/duration_active_3.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/duration_inactive_3.png",
+        "receiveTime": "2026/10/15",
+        "received": true
+      },
+      {
+        "id": 7,
+        "type": 3,
+        "target": 5000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_1.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_1.png",
+        "receiveTime": "2026/10/16",
+        "received": true
+      },
+      {
+        "id": 8,
+        "type": 3,
+        "target": 20000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_2.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_2.png",
+        "receiveTime": "2026/10/17",
+        "received": true
+      },
+      {
+        "id": 9,
+        "type": 3,
+        "target": 50000,
+        "activePic": "https://power.renhesports.com/filestore/power/badge/capacity_active_3.png",
+        "inactivePic": "https://power.renhesports.com/filestore/power/badge/capacity_inactive_3.png",
+        "receiveTime": "2026/10/18",
+        "received": true
+      }
+    ]
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

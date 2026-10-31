@@ -1,0 +1,101 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 46800,
+    "totalConsume": 7800,
+    "totalCapacity": 780000,
+    "totalDistance": 0,
+    "dailyList": null,
+    "monthList": [
+      {
+        "yearMonth": "202601",
+        "totalDuration": 600,
+        "totalConsume": 100,
+        "totalCapacity": 10000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202602",
+        "totalDuration": 1200,
+        "totalConsume": 200,
+        "totalCapacity": 20000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202603",
+        "totalDuration": 1800,
+        "totalConsume": 300,
+        "totalCapacity": 30000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202604",
+        "totalDuration": 2400,
+        "totalConsume": 400,
+        "totalCapacity": 40000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202605",
+        "totalDuration": 3000,
+        "totalConsume": 500,
+        "totalCapacity": 50000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202606",
+        "totalDuration": 3600,
+        "totalConsume": 600,
+        "totalCapacity": 60000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202607",
+        "totalDuration": 4200,
+        "totalConsume": 700,
+        "totalCapacity": 70000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202608",
+        "totalDuration": 4800,
+        "totalConsume": 800,
+        "totalCapacity": 80000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202609",
+        "totalDuration": 5400,
+        "totalConsume": 900,
+        "totalCapacity": 90000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202610",
+        "totalDuration": 6000,
+        "totalConsume": 1000,
+        "totalCapacity": 100000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202611",
+        "totalDuration": 6600,
+        "totalConsume": 1100,
+        "totalCapacity": 110000,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202612",
+        "totalDuration": 7200,
+        "totalConsume": 1200,
+        "totalCapacity": 120000,
+        "totalDistance": 0
+      }
+    ]
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

@@ -1,0 +1,89 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 8100,
+    "totalConsume": 1870,
+    "totalCapacity": 210000,
+    "totalDistance": 0,
+    "dailyList": [
+      {
+        "sportDate": "2026-11-29",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 600,
+        "realConsume": 120,
+        "realCapacity": 20000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-11-30",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 900,
+        "realConsume": 200,
+        "realCapacity": 30000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-12-01",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 1200,
+        "realConsume": 300,
+        "realCapacity": 40000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-12-05",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 700,
+        "realConsume": 150,
+        "realCapacity": 10000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-12-27",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 1000,
+        "realConsume": 250,
+        "realCapacity": 25000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-12-31",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 1500,
+        "realConsume": 350,
+        "realCapacity": 35000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2027-01-01",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 1700,
+        "realConsume": 400,
+        "realCapacity": 45000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2027-01-02",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 500,
+        "realConsume": 100,
+        "realCapacity": 5000,
+        "realDistance": 0
+      }
+    ],
+    "monthList": null
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

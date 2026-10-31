@@ -1,0 +1,35 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 2442,
+    "totalConsume": 618,
+    "totalCapacity": 91720,
+    "totalDistance": 0,
+    "dailyList": [
+      {
+        "sportDate": "2026-10-28",
+        "targetDuration": 3600,
+        "targetConsume": 500,
+        "realDuration": 1086,
+        "realConsume": 351,
+        "realCapacity": 70320,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-29",
+        "targetDuration": 2400,
+        "targetConsume": 600,
+        "realDuration": 1356,
+        "realConsume": 267,
+        "realCapacity": 21400,
+        "realDistance": 0
+      }
+    ],
+    "monthList": null
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

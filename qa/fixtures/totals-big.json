@@ -1,0 +1,15 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 2147483648,
+    "totalConsume": 999999,
+    "totalCapacity": 99999999,
+    "totalDistance": 0,
+    "coins": 99999
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

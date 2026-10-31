@@ -1,0 +1,88 @@
+/* FitMas decorations. Everything is aria-hidden / pointer-events none and never changes layout:
+   pseudo-elements are absolutely positioned; animation is transform/opacity only. */
+html[data-theme="fit-xmas"] {
+  --bulb-1: #d4283f; --bulb-2: #f2b400; --bulb-3: #1f9d5c; --bulb-4: #5aa7e8;
+  --fx-cranberry: #b3122b; --fx-cranberry-l: #d4283f; --fx-pine: #1f7a4d; --fx-pine-d: #14573a;
+  --fx-gold: #f2b400; --fx-gold-d: #c58f00; --fx-snow: #fff; --fx-ice: #b8d4ea; --fx-flake: #fff;
+  --fx-icicle-edge: #9cc0de; --fx-spark: #ffd54a; --fx-wire: #2d4a3a; --fx-socket: #4a4a4a; --fx-cane-edge: #b3122b;
+}
+.xmas-top { position: absolute; top: 0; left: 0; right: 0; height: 24px; overflow: hidden; display: flex; z-index: 35; pointer-events: none; }
+.xmas-ls { flex: none; display: block; }
+.xmas-snow { position: fixed; inset: 0; z-index: -1; pointer-events: none; width: 100%; height: 100%; }
+html.xmas-static .xmas-snow { opacity: .8; }
+
+/* ----- twinkle: three bulb groups fade as whole layers (opacity on a composited element) ----- */
+.xmas-l { position: absolute; inset: 0; display: flex; }
+.xmas-wire .bulbs, :is(.xmas-g1, .xmas-g2, .xmas-g3) .wire { display: none; }
+.xmas-g1 .bulbs use:not(:nth-child(3n+1)), .xmas-g2 .bulbs use:not(:nth-child(3n+2)), .xmas-g3 .bulbs use:not(:nth-child(3n)) { display: none; }
+:is(.xmas-g1, .xmas-g2, .xmas-g3) { will-change: opacity; animation: xmas-tw 2.6s ease-in-out infinite; }
+.xmas-g2 { animation-delay: -.9s; animation-duration: 3.1s; }
+.xmas-g3 { animation-delay: -1.7s; animation-duration: 2.3s; }
+@keyframes xmas-tw { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* ----- logo hat, snow lips, icicles, ornaments (static art as data URIs) ----- */
+html[data-theme="fit-xmas"]:not([data-fx="off"]) :is(.brand-mark, header, #tab-profile, .tab-panel:not(#tab-programs), #list-view, #editor, #programs-courses) { position: relative; }
+@media (min-width: 720px) { html[data-theme="fit-xmas"]:not([data-fx="off"]) nav#tabs { position: relative; } }
+
+html[data-theme="fit-xmas"]:not([data-fx="off"]) :is(.tab-panel:not(#tab-programs), #list-view, #editor, #programs-courses, nav#tabs)::before {
+  content: ""; position: absolute; z-index: 2; pointer-events: none;
+  left: 14px; right: 14px; top: -1px; height: 15px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 20'%3E%3Cpath d='M0 0H128V6Q120 6 118 9Q116 17 108 16Q101 16 100 10Q98 6 92 7Q86 8 85 12Q83 19 75 18Q68 17 68 10Q67 6 60 7Q53 8 52 12Q50 15 44 14Q37 13 36 9Q34 5 26 6Q19 7 18 11Q16 18 9 17Q3 16 3 10Q2 7 0 6Z' fill='%23fff'/%3E%3Cpath d='M128 6Q120 6 118 9Q116 17 108 16Q101 16 100 10Q98 6 92 7Q86 8 85 12Q83 19 75 18Q68 17 68 10Q67 6 60 7Q53 8 52 12Q50 15 44 14Q37 13 36 9Q34 5 26 6Q19 7 18 11Q16 18 9 17Q3 16 3 10Q2 7 0 6' fill='none' stroke='%239cc0de' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x 0 0 / 96px 15px;
+}
+html[data-theme="fit-xmas"]:not([data-fx="off"]) nav#tabs::before { left: 12px; right: 12px; top: 0; height: 11px; }
+@media (max-width: 719px) { html[data-theme="fit-xmas"]:not([data-fx="off"]) nav#tabs::before { top: -9px; height: 13px; left: 0; right: 0; } }
+
+/* icicles hanging under the header (ledge + drips) */
+html[data-theme="fit-xmas"]:not([data-fx="off"]) header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 18px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2022'%3E%3Cg%20fill='%23fff'%20stroke='%239cc0de'%20stroke-width='.9'%20stroke-linejoin='round'%3E%3Cpath%20d='M2%203H10Q7.4%2010.7%206.5%2017Q5.5%2017%204.6%2010.7Q2.6%206.5%202%203Z'/%3E%3Cpath%20d='M14%203H20Q18.1%206.9%2017.5%2010Q16.5%2010%2015.9%206.9Q14.6%204.8%2014%203Z'/%3E%3Cpath%20d='M24%203H34Q30.8%2013.5%2029.5%2022Q28.5%2022%2027.2%2013.5Q24.6%207.8%2024%203Z'/%3E%3Cpath%20d='M38%203H43Q41.4%206.3%2041.0%209Q40.0%209%2039.6%206.3Q38.6%204.5%2038%203Z'/%3E%3Cpath%20d='M48%203H56Q53.4%209.6%2052.5%2015Q51.5%2015%2050.6%209.6Q48.6%206.0%2048%203Z'/%3E%3Cpath%20d='M62%203H68Q66.1%208.0%2065.5%2012Q64.5%2012%2063.9%208.0Q62.6%205.2%2062%203Z'/%3E%3Cpath%20d='M72%203H82Q78.8%2012.4%2077.5%2020Q76.5%2020%2075.2%2012.4Q72.6%207.2%2072%203Z'/%3E%3Cpath%20d='M86%203H92Q90.1%207.4%2089.5%2011Q88.5%2011%2087.9%207.4Q86.6%205.0%2086%203Z'/%3E%3C/g%3E%3Crect%20width='96'%20height='3.2'%20fill='%23fff'/%3E%3Cpath%20d='M0%203.2H96'%20stroke='%239cc0de'%20stroke-width='.9'/%3E%3Cpath%20d='M5.0%204.5L5.4%2011.4'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M16.0%204.5L16.4%207.2'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M28.0%204.5L28.4%2014.4'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M39.5%204.5L39.9%206.6'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M51.0%204.5L51.4%2010.2'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M64.0%204.5L64.4%208.4'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M76.0%204.5L76.4%2013.2'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M88.0%204.5L88.4%207.8'%20stroke='%23e9f4ff'%20stroke-width='1'%20fill='none'%20stroke-linecap='round'/%3E%3C/svg%3E") repeat-x 0 0 / 80px 18px;
+}
+@media (max-width: 719px) { html[data-theme="fit-xmas"]:not([data-fx="off"]) header::after { height: 12px; background-size: 52px 12px; } }
+
+/* Santa hat on the logo (tilted over the top-left corner, outlined so it reads on the cranberry tile); the bobble swings once */
+html[data-theme="fit-xmas"]:not([data-fx="off"]) .brand-mark::after {
+  content: ""; position: absolute; left: -11px; top: -16px; width: 40px; height: 36px; pointer-events: none; z-index: 2;
+  transform: rotate(-14deg); transform-origin: 60% 80%;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2044'%3E%3Cpath%20d='M5%2034Q6%206%2028%206Q34%206%2038%2014Q42%2022%2044%2034Z'%20fill='%23e8344b'%20stroke='%237d0a1c'%20stroke-width='1.2'%20stroke-linejoin='round'/%3E%3Cpath%20d='M28%206Q36%208%2041%2020Q36%2014%2028%2014Z'%20fill='%23000'%20opacity='.16'/%3E%3Cpath%20d='M13%2014Q17%209%2024%208'%20stroke='%23ff8fa0'%20stroke-width='1.6'%20fill='none'%20stroke-linecap='round'/%3E%3Crect%20x='2'%20y='30'%20width='44'%20height='11'%20rx='5.5'%20fill='%23fff'%20stroke='%239cc0de'%20stroke-width='1.2'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+}
+html[data-theme="fit-xmas"]:not([data-fx="off"]) .brand-mark::before {
+  content: ""; position: absolute; left: -3px; top: -22px; width: 10px; height: 10px; border-radius: 50%; z-index: 3; pointer-events: none;
+  background: #fff; box-shadow: 0 0 0 1px #9cc0de; transform-origin: 3px 14px;
+  animation: xmas-bob 1.8s ease-out .8s 1 both;
+}
+@media (max-width: 719px) {
+  html[data-theme="fit-xmas"]:not([data-fx="off"]) .brand-mark::after { top: -14px; }
+  html[data-theme="fit-xmas"]:not([data-fx="off"]) .brand-mark::before { top: -20px; }
+}
+@keyframes xmas-bob { 0% { transform: rotate(0); } 18% { transform: rotate(-28deg); } 40% { transform: rotate(18deg); } 62% { transform: rotate(-9deg); } 82% { transform: rotate(4deg); } 100% { transform: rotate(0); } }
+
+/* swinging ornaments hanging from the Profile card's top edge */
+html[data-theme="fit-xmas"]:not([data-fx="off"]) #tab-profile::after {
+  content: ""; position: absolute; top: 0; right: 22px; width: 56px; height: 36px; pointer-events: none; z-index: 2;
+  transform-origin: 50% 0; animation: xmas-sw 3.4s ease-in-out infinite alternate;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 36'%3E%3Cpath d='M12 0V11M42 0V7' stroke='%23c58f00' stroke-width='1'/%3E%3Crect x='9.5' y='9' width='5' height='4' rx='1' fill='%23f2b400'/%3E%3Ccircle cx='12' cy='21' r='9' fill='%23b3122b'/%3E%3Cellipse cx='9' cy='17.5' rx='2' ry='3' fill='%23fff' opacity='.5'/%3E%3Crect x='39.5' y='5' width='5' height='4' rx='1' fill='%23f2b400'/%3E%3Ccircle cx='42' cy='15.5' r='7.5' fill='%231f7a4d'/%3E%3Cpath d='M35 15.5H49' stroke='%23f2b400' stroke-width='1.5'/%3E%3Cellipse cx='39.5' cy='12.5' rx='1.6' ry='2.4' fill='%23fff' opacity='.5'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+}
+@keyframes xmas-sw { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+
+/* ----- easter eggs (inside #fx-root front layer) ----- */
+.xmas-p { position: fixed; display: block; margin: -4px 0 0 -4px; opacity: 0; animation: xmas-burst 1s cubic-bezier(.2,.7,.3,1) forwards; }
+.xmas-p0 { border-radius: 50%; }
+.xmas-p2 { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); width: 11px !important; height: 11px !important; }
+@keyframes xmas-burst { 0% { opacity: 1; transform: translate3d(0,0,0) scale(.3) rotate(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate3d(var(--dx), calc(var(--dy) + 22px), 0) scale(1) rotate(var(--r)); } }
+.xmas-star { position: fixed; display: block; width: 90px; height: 2px; border-radius: 2px; opacity: 0; transform-origin: 100% 50%;
+  background: linear-gradient(90deg, rgba(255,213,74,0), var(--fx-spark, #ffd54a) 85%, #fff); animation: xmas-shoot 1.4s ease-in forwards; }
+@keyframes xmas-shoot { 0% { opacity: 0; transform: translate3d(0,0,0) rotate(25deg); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(25deg); } }
+
+/* ----- motion off: subtle, reduced-motion, lighter data screens, hidden tab ----- */
+/* pseudo-elements cannot go inside :is(), so each is listed on its own */
+html[data-fx="subtle"] .xmas-l, html[data-fx="subtle"] .brand-mark::before, html[data-fx="subtle"] #tab-profile::after,
+html.xmas-lite .xmas-l, html.xmas-lite .brand-mark::before, html.xmas-lite #tab-profile::after { animation: none !important; }
+html.xmas-lite .xmas-snow { display: none; }
+html.fx-paused .xmas-l, html.fx-paused .brand-mark::before, html.fx-paused #tab-profile::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .xmas-l, .brand-mark::before, #tab-profile::after { animation: none !important; }
+}
+html[data-fx="off"] .xmas-top { display: none; }
+@media (forced-colors: active), print {
+  .xmas-top, .xmas-snow, .brand-mark::before, .brand-mark::after, header::after, nav#tabs::before, #tab-profile::after, :is(.tab-panel, #list-view, #editor, #programs-courses)::before { display: none !important; }
+}

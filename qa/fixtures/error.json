@@ -1,0 +1,9 @@
+{
+  "code": 500,
+  "msg": "Boom <b>x</b>",
+  "traceId": "fixture",
+  "data": null,
+  "error": true,
+  "success": false,
+  "warn": false
+}

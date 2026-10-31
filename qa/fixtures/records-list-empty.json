@@ -1,0 +1,9 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": [],
+  "error": false,
+  "success": true,
+  "warn": false
+}

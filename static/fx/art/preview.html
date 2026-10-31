@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>FX art preview</title>
+<style>body{margin:0;font:12px system-ui}section{padding:16px}.g{display:flex;flex-wrap:wrap;gap:14px}.c{width:120px;text-align:center}.c svg{height:64px;width:auto;max-width:120px;display:block;margin:0 auto 4px;overflow:visible}
+.xm{background:#f3f8f5;color:#1f3a2c;--bulb-1:#e5243b}.hw{background:#120d1a;color:#cdbce6}.xm .c svg.wide,.hw .c svg.wide{width:110px;height:auto}</style>
+<section class="xm"><h3>FitMas</h3><div class="g" id="x"></div></section>
+<section class="hw"><h3>HallowFit</h3><div class="g" id="h"></div></section>
+<script>
+const X="light-string ornament garland santa-hat holly candy-cane snowflake-1 snowflake-2 snowflake-3 snow-cap icicle icicle-row star sparkle gift".split(" ");
+const H="web-corner spider pumpkin jack-o-lantern bat ghost eyes-in-dark tombstone candy-corn bat-logo-accent".split(" ");
+async function go(l,id){for(const n of l){const t=await (await fetch(n+".svg")).text();const d=document.createElement("div");d.className="c";d.innerHTML=t+n;const s=d.firstChild;if(/light|garland|cap|row|eyes|web/.test(n))s.classList.add("wide");document.getElementById(id).append(d)}}
+go(X,"x");go(H,"h");
+</script>

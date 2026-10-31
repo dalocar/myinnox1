@@ -1,0 +1,29 @@
+name: CI
+
+# Runs on PRs (including from forks) with a read-only token and NO secrets.
+# Never switch this to pull_request_target.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Unit tests
+        run: node --test static/*.test.js
+      - name: Theme contrast
+        run: node scripts/check-theme-contrast.js
+      - name: Network-surface guard
+        run: node scripts/check-external-hosts.js

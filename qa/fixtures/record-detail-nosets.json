@@ -1,0 +1,25 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "sportRecordId": 22401,
+    "sportMode": 2,
+    "sportModeId": 2220,
+    "sportType": 2,
+    "deviceType": "35",
+    "deviceCode": 0,
+    "startTime": "2026-10-28 10:24:44",
+    "name": null,
+    "coreData": 70320,
+    "consume": 351,
+    "duration": 1086,
+    "capacity": 0,
+    "coins": 35,
+    "steps": 0,
+    "extData": []
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

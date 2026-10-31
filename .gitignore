@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.DS_Store
+.wrangler/
+.claude/
+CLAUDE.local.md
+fx-shots/
+.env
+*.env
+.api-probe*
+qa/screens/

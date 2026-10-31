@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "data": [
+    {
+      "testId": 348,
+      "testTime": "2026-10-28",
+      "testType": 3,
+      "resultValue": 50.9,
+      "resultLevel": "A",
+      "resultLevelPercent": 62.5
+    },
+    {
+      "testId": 351,
+      "testTime": "2026-10-20",
+      "testType": 5,
+      "resultValue": 28.8,
+      "resultLevel": "B",
+      "resultLevelPercent": 40
+    },
+    {
+      "testId": 352,
+      "testTime": "2026-10-21",
+      "testType": 9,
+      "resultValue": 17.0,
+      "resultLevel": "Z",
+      "resultLevelPercent": 88
+    },
+    {
+      "testId": 340,
+      "testTime": "2026-09-01",
+      "testType": 3,
+      "resultValue": 37.2,
+      "resultLevel": "C",
+      "resultLevelPercent": 5
+    }
+  ]
+}

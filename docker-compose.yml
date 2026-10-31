@@ -1,0 +1,6 @@
+services:
+  innodigym-editor:
+    build: .
+    ports:
+      - "8787:8787"
+    restart: unless-stopped

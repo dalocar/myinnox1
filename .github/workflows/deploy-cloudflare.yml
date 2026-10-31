@@ -1,0 +1,35 @@
+name: Deploy to Cloudflare Pages
+
+# Deploys only from main. Secrets live in the `production` Environment, which
+# is restricted to main and requires maintainer approval, so a workflow edited
+# in a PR branch can never read them. Forks skip the job (no DEPLOY_ENABLED).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Stamp build version
+        run: scripts/stamp-version.sh "$GITHUB_SHA"
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy static --project-name=${{ vars.CF_PAGES_PROJECT }} --branch=main

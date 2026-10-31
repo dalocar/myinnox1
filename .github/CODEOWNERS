@@ -1,0 +1,12 @@
+# Every path needing a maintainer's review. Combined with the branch ruleset
+# "require review from Code Owners", nothing here merges without them.
+*                         @dalocar
+/.github/                 @dalocar
+/functions/               @dalocar
+/server.py                @dalocar
+/Dockerfile               @dalocar
+/docker-compose*.yml      @dalocar
+/scripts/                 @dalocar
+/static/_headers          @dalocar
+/static/index.html        @dalocar
+/static/app.js            @dalocar

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f6fb">
+<meta name="color-scheme" content="light dark">
+<title>MyInnoX1 — Unofficial X1 Pro Client</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+// The app lives on its own domain; send old *.pages.dev links there (the API only answers on it).
+if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.carralabs.app" + location.pathname + location.search + location.hash);
+</script>
+<!-- Blocking boot script: resolves the theme before the stylesheet so there is no flash.
+     Keep in sync with static/theme.js (same ids, same storage key). -->
+<script>
+(function () {
+  var META = { default: "#f4f6fb", dark: "#0e1523", ember: "#faf4ec", tide: "#eef3fa", graphite: "#ececee", "fit-xmas": "#f3f8f5", hallowfit: "#120d1a" };
+  var pref = "auto";
+  try { pref = localStorage.getItem("innodigym_theme") || "auto"; } catch (e) {}
+  if (pref !== "auto" && !Object.prototype.hasOwnProperty.call(META, pref)) pref = "auto";
+  var id = pref;
+  if (pref === "auto") {
+    id = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default";
+  }
+  if (!Object.prototype.hasOwnProperty.call(META, id)) id = "default";
+  var h = document.documentElement;
+  h.setAttribute("data-theme", id);
+  h.style.colorScheme = id === "dark" || id === "hallowfit" ? "dark" : "light";
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", META[id]);
+})();
+</script>
+<link rel="stylesheet" href="themes.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme-fx.css">
+<link rel="stylesheet" href="theme-fx-xmas.css">
+<link rel="stylesheet" href="theme-fx-halloween.css">
+<link rel="stylesheet" href="activity-dashboard.css">
+<link rel="stylesheet" href="activity-explorer.css">
+<link rel="stylesheet" href="activity-report.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><symbol id="logo" viewBox="0 0 96 96"><path class="logo-machine" style="fill:var(--logo-machine,currentColor);fill-opacity:var(--logo-machine-op,1)" fill-rule="evenodd" d="M64.3 61.6l-2.7 0.4 0.1 16.5 2.6 -0.1zM58.3 61.6l-0.1 17 0.9 0.1 0.1 -16.9 -0.2 -0.2zM68.3 55.8l0 0.3 0.5 0.7 11.1 3.6 0.4 0.3 0.2 0.6 0.7 0.4 1.3 0 3.5 3.8 1.3 1.1 0.7 0.1 1.2 -0.3 0.7 -0.6 -0 -6.7 -0.5 -0.5 -1.1 -0.6 -1.1 -0.1 -4.1 1.2 -0.4 0.3 -0.5 -0.2 -2.1 0.2 -11.4 -3.7zM87.4 58.9l0.4 0.2 0 5.9 -0.2 0.2 -3.3 -3.3 0.3 -0.9 -0.1 -1.2zM29.9 15.5l-2.5 0.4 -0.9 0.7 -0.2 0.6 -0 35 2.6 -2.2 2.3 -1.4 4.3 -1.8 4.2 -1 1 -0.7 0.4 -0.8 -0.1 -25.1 -0.6 -0.6 -1.5 -0.1 -8 -2.4 -0.5 0.1 -0.6 0.9 -0.1 15.5 -0.4 0.3 -0.2 -0.2 -0.1 -15.7 0.2 -0.7 0.8 -0.7zM10.4 8.1l-0.3 0.5 -0.1 1.7 0.1 9.8 -1.3 0.5 -0.5 0.8 0 5.8 0.6 0.7 1.1 0.5 -0.2 46 0.6 0.3 -3.1 0.8 -0.7 0.7 -0.3 0.7 -0.1 12.6 0.6 1.4 0.8 0.7 0.9 0.4 73.6 -0.1 0.1 -1.7 -0.3 -0.3 -4.1 -0 -0.2 -0.2 -0 -6.5 0.2 -0.2 5.6 -0.1 0.3 -0.4 -0 -2.6 -0.4 -0.4 -27.5 0 -3.6 -0.2 -4.2 -0.6 -5.4 -1.6 -4.3 -2.1 -2.6 -2 -2.2 -2.2 -2.2 -2.7 -0.1 0.4 0.3 2.2 -0.1 6 2.6 4.6 1.4 1.7 1.6 0.7 35.3 -0.6 0.2 0.3 -0 6 -0.2 0.2 -3.2 -0.1 -2.6 -3.2 -0.9 -0.7 -1.7 1 -1.4 -1 -27.4 0 -1 -0.9 -3.2 -5.9 -2.1 -0 -2.2 -3.5 -2.7 -0.3 -1.1 0.5 -3.3 -0.2 -1.9 0.1 5.3 10.9 1 0.6 38.7 -0.2 0.7 0.5 -0.2 0.2 -39.5 0.2 -0.9 -0.3 -0.8 -0.8 -5.7 -11 -1.3 -1.1 -1 -0.1 -1.1 0.2 -0.2 -0.2 0.7 -0.2 0.1 -0.2 0 -33 0.2 -0.3 0.4 0.9 0.5 0.3 1.7 -0.2 -0.3 0.4 0.1 32.4 0.8 -0.1 0 -32.4 1.3 -0.1 2.7 0.2 0.6 -0.5 0.2 -0.5 -0.1 -1.1 -0.4 -0.6 -3.2 -8.4 -0.1 -2 -0.2 -0.3 -0.9 -0.4 0 -0.6 0.6 -0.3 0.5 -0.5 0.9 -0.4 0.6 -0.9 -0.1 -5.1 -0.6 -0.6 -0.5 0.1 -0.7 -0.5 -0.8 -0.1 -0.1 5.7 0.6 0.9 -0.4 0 -0.5 -0.5 -0.2 -0.6 -0 -5.3 -0.4 -0.7 1.1 -0 0 -8.8 0.7 -1.6 1.4 -0.9 1.2 -0 12 3.5 0.8 0.9 -0 4.1 3.4 1.1 0.3 -0.1 0 -4 -2.1 -1.1 0.4 -0.1 23.1 6.9 0.6 0.6 0.3 0.7 0 5.6 0.4 0.3 -0.9 0.3 -0.6 0.8 -0.1 3.8 0.3 0.7 1 0.6 0.1 1.2 0.7 0.5 0.1 17.5 0.5 0 -0 -17.6 0.2 -0.2 0.9 -0.1 0.3 -0.4 0 -0.4 0.6 -0.2 0.2 0.2 0 0.8 0.2 0.4 0 18.4 1.4 0.7 0.3 -0.1 0 -18.6 0.8 -0.8 0 -0.9 1.2 -0.5 0.4 -0.5 0.1 -4.3 -0.4 -0.9 -1.5 -0.7 -0.4 0.1 0 4.4 -0.2 0.3 -0.2 -0.1 -0.3 0.7 -0.5 0.5 -0.8 0.1 1 -1.1 -0 -5.2 -0.4 -0.1 -2.2 0.5 -0.6 -0.1 2.8 -0.6 0.4 -0.4 -0 -4.7 -0.3 -1.5 -0.6 -1.1 -1.3 -1.2 -4.9 -1.7 -0.3 -0.5 -1.3 0 -0.8 -0.7 -21.8 -6.7 -0.3 0 -0.2 0.4 -0.6 -0 -9.2 -2.7 -1.9 -0.2 -1.2 0.3 -0.9 0.5 -1.4 1.3 -0.7 1.4 -0.4 1.8 -0 9.4 -0.5 0.1 -0.5 -0.2 0.1 -10.2 0.3 -1.1 -1.4 -0.1 -2.5 0.9zM17.4 33.1l0.4 0.5 2 5.2 -0.1 0.4 -2.2 -0.1 -0.9 -0.3 -0 -3.3zM16.9 29.1l0.4 0.4 0 2.2 -0.2 0.2 -0.5 -0.7 -0 -1.8zM15.1 27.2l0.2 0.2 0 1.4 0.6 0.5 0 5.1 -1.2 4.2 -1.2 1 -0.2 -0.2 0.1 -11 0.8 -0.4 0.3 -0.8z"/><path class="logo-figure" style="fill:var(--logo-figure,currentColor)" fill-rule="evenodd" d="M50.5 65.9l-0.2 0 -3.8 4 -1 1.4 -0.4 1.2 0.1 1.9 0.8 1.6 1 0.8 1 0.5 2.2 0.5 -0.9 -2.5 -0.3 -2.4 0.5 -3.1zM49.9 58.6l-0.7 0 -0.6 0.4 -1.9 3.2 -1.6 4.1 -0.5 2.1 -0.2 2.4 0.4 -0.2 1.5 -1.9 4.4 -4.9 1.7 -2.5 0.1 -0.7zM36.1 48.7l-1.2 0.2 -2.4 0.8 -3.1 1.9 -2.1 2.4 -0.6 1.4 -0.2 1.2 0.3 2.6 1.7 3.6 2.8 4.1 1.7 1.9 1.1 0.9 -1 -2.6 -0.7 -2.6 -0.3 -2.5 0.1 -3.8 0.2 -1.5 0.9 -3.3 0.9 -2zM67.7 56.3l-0.8 -0.8 -1.7 -1 -4.4 -1.3 -0.3 0.3 1 2 -0 0.3 -0.3 -0 -2.9 -3.6 -1.5 -1.5 -1 -0.7 -2.3 -1 -3 -0.1 -2.7 0.6 -6.3 0.6 -0.1 -0.2 1.2 -0.6 4.7 -1.1 -1.8 -1.4 -1.7 -1.9 -0.3 -0 -1.4 1.7 -2.7 1.6 -2.3 2.1 -1.2 1.8 -1.2 2.5 -0.5 2.6 0 2.9 0.6 3.8 1.2 3.9 1.2 2.7 1.1 1.5 2 1.9 2 1.3 1.2 0.4 -0.8 -3.1 0 -2.7 0.3 -2 1.1 -3.5 0.9 -2.3 1.8 -3.3 1.2 -1.5 0.8 -0.4 1.3 0 3.1 1.9 2.3 1 2.9 0.7 2.9 0.3 3.5 -0.5 1.3 -0.4 1.4 -0.7 0.7 -1 0 -0.9zM48.1 35.8l-2.1 0.7 -1.4 1.5 -0.7 1.7 -0 2 0.8 2.1 1.3 1.5 2 1.3 0.6 0.2 1.4 -0 1.3 -0.8 1.4 -1.7 0.9 -2.3 -0 -2.4 -0.8 -1.8 -1 -1 -1.5 -0.8z"/></symbol></defs></svg>
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false"><use href="#logo"/></svg>
+      </div>
+      <h1>MyInnoX1 <span>Unofficial X1 Pro client</span></h1>
+    </div>
+    <div class="header-right">
+      <div id="lang-menu">
+        <button type="button" id="lang-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="lang-list" aria-label="Language" title="Language">
+          <span class="lang-flag" aria-hidden="true">🇺🇸</span><span class="lang-code">EN</span>
+          <svg class="lang-caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 4.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <ul id="lang-list" role="listbox" tabindex="-1" aria-label="Language" hidden></ul>
+      </div>
+      <div id="userbar"></div>
+    </div>
+  </header>
+
+  <section id="login-section">
+    <svg class="logo-hero" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><use href="#logo"/></svg>
+    <h2>Welcome back</h2>
+    <p class="lede">Log in with your INNODIGYM account.</p>
+    <form id="login-form">
+      <label>Email <input type="email" id="login-email" required autocomplete="username"></label>
+      <label>Password <input type="password" id="login-password" required autocomplete="current-password"></label>
+      <button type="submit">Log in</button>
+    </form>
+    <p id="login-error" class="error" hidden></p>
+    <p class="hint">Credentials are sent through this site's proxy straight to power.renhesports.com. The proxy doesn't store or log them. Your session token stays in this browser's localStorage.</p>
+    <p class="tip-row"><a class="tip-link" href="#" target="_blank" rel="noopener noreferrer" hidden>☕ Buy me a coffee</a></p>
+  </section>
+
+  <nav id="tabs" aria-label="Main sections" hidden>
+    <button class="tab-btn active" data-tab="programs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>Programs</span></button>
+    <button class="tab-btn" data-tab="plans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15h3"/></svg><span>Plans</span></button>
+    <button class="tab-btn" data-tab="actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><span>Actions</span></button>
+    <button class="tab-btn" data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>History</span></button>
+    <button class="tab-btn" data-tab="fitness"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Fitness</span></button>
+    <button class="tab-btn" data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profile</span></button>
+  </nav>
+
+  <section id="main-section" hidden>
+
+    <!-- PROGRAMS -->
+    <div id="tab-programs" class="tab-panel">
+      <div id="pg-seg" class="pl-seg mv-seg" role="group" aria-label="Programs view">
+        <button type="button" id="pg-seg-courses" data-view="courses" aria-pressed="true">Courses</button>
+        <button type="button" id="pg-seg-mine" data-view="mine" aria-pressed="false">My programs</button>
+      </div>
+
+      <div id="programs-courses">
+        <div class="row-between">
+          <h2>Courses</h2>
+          <button id="cs-reset" class="secondary" type="button" hidden>Reset</button>
+        </div>
+        <div class="mv-search">
+          <label for="cs-search" class="sr-only">Search courses</label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="cs-search" type="text" placeholder="Enter a name" autocomplete="off" enterkeyhint="search">
+        </div>
+        <div id="cs-topics" class="mv-chips cs-topics" role="group" aria-label="Topic"></div>
+        <div class="cs-filter-bar">
+          <button type="button" id="cs-filters-btn" class="secondary" aria-expanded="false" aria-controls="cs-panel">Filters <span id="cs-badge" class="cs-badge" hidden></span></button>
+        </div>
+        <div id="cs-panel" class="cs-panel" hidden></div>
+        <p id="cs-count" class="meta mv-count" aria-live="polite"></p>
+        <div id="cs-results"></div>
+      </div>
+
+      <div id="programs-mine" hidden>
+      <div id="list-view">
+        <div class="row-between">
+          <h2>Your Custom Programs</h2>
+          <div>
+            <button id="new-program-btn">New Program</button>
+            <button id="import-program-btn" class="secondary" type="button">Import</button>
+            <button id="export-all-btn" class="secondary" type="button">Export all</button>
+            <input type="file" id="pio-file" accept=".json,application/json" hidden aria-label="Import programs file">
+            <button id="refresh-btn" class="secondary">Refresh</button>
+          </div>
+        </div>
+        <div id="program-list"></div>
+      </div>
+      <div id="editor" hidden>
+        <div class="row-between">
+          <h2 id="editor-title">Edit Program</h2>
+          <button id="back-btn" class="secondary">&larr; Back to list</button>
+        </div>
+        <div class="editor-top">
+          <label class="name-field">Name <input id="edit-name" type="text"></label>
+          <div class="cover-field">
+            <span>Cover</span>
+            <button type="button" id="cover-thumb-btn" class="cover-thumb-btn" aria-label="Change cover" aria-haspopup="dialog">
+              <img id="cover-thumb" alt="">
+              <span class="cover-badge" aria-hidden="true">Edit</span>
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="steps-table">
+          <thead><tr><th class="reorder-col"></th><th></th><th>#</th><th>Action</th><th class="fld">Reps</th><th class="fld"><span data-unit-src="Load (kg)">Load (kg)</span></th><th class="fld">Rest (s)</th><th class="fld">Sets</th><th></th></tr></thead>
+          <tbody id="steps-body"></tbody>
+        </table></div>
+        <button id="add-action-btn" class="secondary" type="button">+ Add action</button>
+        <div class="actions">
+          <button id="save-btn">Save changes</button>
+          <button id="delete-program-btn" class="danger-btn" type="button">Delete program</button>
+          <span id="save-status"></span>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- PLANS -->
+    <div id="tab-plans" class="tab-panel" hidden>
+      <div id="plans-list-view">
+        <div class="row-between">
+          <h2>Training Plans</h2>
+          <div>
+            <button id="plans-new-btn" type="button">New Plan</button>
+            <button id="plans-refresh-btn" class="secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <div id="plans-list" aria-live="polite"></div>
+      </div>
+      <div id="plans-wizard" hidden>
+        <div class="row-between">
+          <h2 id="pl-title" tabindex="-1">New plan</h2>
+          <button id="pl-cancel" class="secondary" type="button">&larr; Back to plans</button>
+        </div>
+        <ol id="pl-stepper" class="pl-stepper" aria-label="Plan steps"></ol>
+        <div id="pl-banner"></div>
+        <div id="pl-step"></div>
+        <div class="pl-footer">
+          <div id="pl-footer-msg" aria-live="polite"></div>
+          <div class="pl-footer-btns">
+            <button id="pl-back" class="secondary" type="button">Back</button>
+            <button id="pl-next" type="button">Next</button>
+            <button id="pl-save" type="button">Save plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION PICKER MODAL -->
+    <div id="action-picker-backdrop" hidden>
+      <div id="action-picker">
+        <div class="row-between">
+          <h3 class="no-margin">Add an action</h3>
+          <button id="picker-close-btn" class="secondary">Close</button>
+        </div>
+        <input id="picker-search" type="text" placeholder="Search actions…" autocomplete="off">
+        <div id="picker-chips"></div>
+        <div id="picker-results"></div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div id="tab-actions" class="tab-panel" hidden>
+      <div id="mv-seg" class="pl-seg mv-seg" role="group" aria-label="Actions view">
+        <button type="button" id="mv-seg-library" data-view="library" aria-pressed="true">Library</button>
+        <button type="button" id="mv-seg-mine" data-view="mine" aria-pressed="false">My actions</button>
+      </div>
+
+      <div id="actions-library">
+        <div class="row-between">
+          <h2>Movements</h2>
+          <button id="mv-reset" class="secondary" type="button" hidden>Reset</button>
+        </div>
+        <div class="mv-search">
+          <label for="mv-search" class="sr-only">Search movements</label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="mv-search" type="text" placeholder="Enter a name" autocomplete="off" enterkeyhint="search">
+        </div>
+        <div id="mv-filters" class="mv-filters"></div>
+        <p id="mv-count" class="meta mv-count" aria-live="polite"></p>
+        <div id="mv-results"></div>
+      </div>
+
+      <div id="actions-mine" hidden>
+      <div class="row-between">
+        <h2>Your Custom Actions</h2>
+        <button id="actions-refresh-btn" class="secondary">Refresh</button>
+      </div>
+      <div id="actions-list"></div>
+
+      <h3>Add a custom action</h3>
+      <form id="action-add-form" class="ca-form">
+        <label>Name <input type="text" id="new-action-name" required></label>
+        <fieldset><legend>Part</legend><div class="ca-chips" id="ca-parts" data-multi="1"></div></fieldset>
+        <fieldset><legend>Difficulty</legend><div class="ca-chips" id="ca-level"></div></fieldset>
+        <fieldset><legend>Type</legend><div class="ca-chips" id="ca-type"></div></fieldset>
+        <fieldset><legend>Attributes</legend>
+          <div class="ca-chips" id="ca-equip"></div>
+          <div class="ca-chips" id="ca-count"></div>
+        </fieldset>
+        <fieldset id="ca-weight-set"><legend>Weight mode</legend><div class="ca-chips" id="ca-weight"></div></fieldset>
+        <div><button type="submit">Add</button></div>
+      </form>
+      <p id="action-add-status"></p>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="tab-history" class="tab-panel" hidden>
+      <!-- Sub-views of the History tab. Owners: dashboard (#act-dashboard, #act-medals), explorer (#act-explorer), report (#act-report). Only one is visible at a time. -->
+      <div id="act-dashboard">
+        <div class="row-between">
+          <h2>Workout History</h2>
+          <button id="history-refresh-btn" class="secondary">Refresh (last 180 days)</button>
+        </div>
+        <div id="history-list"></div>
+      </div>
+      <div id="act-medals" hidden></div>
+      <div id="act-explorer" hidden></div>
+      <div id="act-report" hidden></div>
+    </div>
+
+    <!-- FITNESS -->
+    <div id="tab-fitness" class="tab-panel" hidden>
+      <h2>Fitness Level</h2>
+      <div id="fitness-body"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="tab-profile" class="tab-panel" hidden>
+      <h2>Profile</h2>
+      <p><button type="button" id="profile-activity-btn" class="secondary">Open activity explorer</button></p>
+      <div class="tip-card" hidden>
+        <p class="hint-sm">Free, independent and unofficial. If it saves you time, a coffee helps keep it running. Nothing is locked behind it.</p>
+        <a class="tip-link" href="#" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>
+      </div>
+      <fieldset id="theme-picker" class="theme-picker">
+        <legend>Theme</legend>
+        <p class="hint-sm">Saved on this device only.</p>
+        <div class="theme-grid" role="radiogroup" aria-label="Theme">
+          <label class="theme-card">
+            <input type="radio" name="theme" value="auto">
+            <span class="theme-mini theme-mini-auto" aria-hidden="true">
+              <span class="tm-half" data-theme="default"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+              <span class="tm-half tm-half-b" data-theme="dark"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            </span>
+            <span class="theme-name">Auto</span>
+            <span class="theme-desc">Follows your device</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="default">
+            <span class="theme-mini" data-theme="default" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">Teal Classic</span>
+            <span class="theme-desc">The current look, fresh teal with a lime spark</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="dark">
+            <span class="theme-mini" data-theme="dark" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">Midnight</span>
+            <span class="theme-desc">Deep dark theme, easy on the eyes at night</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="ember">
+            <span class="theme-mini" data-theme="ember" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">Ember</span>
+            <span class="theme-desc">Warm amber-brown and sand</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="tide">
+            <span class="theme-mini" data-theme="tide" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">Tide</span>
+            <span class="theme-desc">Cool, calm blue</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="graphite">
+            <span class="theme-mini" data-theme="graphite" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">Graphite</span>
+            <span class="theme-desc">High contrast, black on white</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="fit-xmas">
+            <span class="theme-mini" data-theme="fit-xmas" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">FitMas</span>
+            <span class="theme-desc">Snowy nights and twinkling lights</span>
+          </label>
+          <label class="theme-card">
+            <input type="radio" name="theme" value="hallowfit">
+            <span class="theme-mini" data-theme="hallowfit" aria-hidden="true"><i class="tm-bar"></i><i class="tm-card"><b></b><b></b><u></u></i></span>
+            <span class="theme-name">HallowFit</span>
+            <span class="theme-desc">Pumpkins, cobwebs and creeping spiders</span>
+          </label>
+        </div>
+        <p id="theme-live" class="sr-only" aria-live="polite"></p>
+      </fieldset>
+      <fieldset id="fx-picker" class="fx-picker">
+        <legend>Seasonal decorations</legend>
+        <p class="hint-sm">Animated extras for FitMas and HallowFit. They never block the app.</p>
+        <div class="fx-seg" role="radiogroup" aria-label="Seasonal decorations">
+          <label><input type="radio" name="fx" value="full"><span>Full</span></label>
+          <label><input type="radio" name="fx" value="subtle"><span>Subtle</span></label>
+          <label><input type="radio" name="fx" value="off"><span>Off</span></label>
+        </div>
+        <p id="fx-note" class="hint-sm" hidden>Applies when you pick FitMas or HallowFit.</p>
+      </fieldset>
+      <form id="profile-form" class="inline-form stacked">
+        <label>Nickname <input type="text" id="p-nickName"></label>
+        <label>Birthday <input type="date" id="p-birthday"></label>
+        <label>Sex
+          <select id="p-sex"><option value="1">Male</option><option value="2">Female</option></select>
+        </label>
+        <label>Units
+          <select id="p-unit"><option value="0">Metric</option><option value="1">Imperial</option></select>
+        </label>
+        <label>Daily training goal (min) <input type="number" id="p-trainingTime" min="0"></label>
+        <label><span data-unit-src="Target weight (kg)">Target weight (kg)</span> <input type="number" id="p-targetWeight" min="0" step="0.1"></label>
+        <label class="readonly-field">Height (cm) <input type="number" id="p-height" disabled>
+          <small>Currently fails on INNODIGYM's server for any value (confirmed 500) — edit in the official app.</small>
+        </label>
+        <label class="readonly-field"><span data-unit-src="Weight (kg)">Weight (kg)</span> <input type="number" id="p-weight" disabled>
+          <small>Same server-side issue as height.</small>
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+      <p id="profile-status"></p>
+    </div>
+
+  </section>
+
+  <!-- IMAGE / VIDEO LIGHTBOX -->
+  <div id="lightbox-backdrop" hidden>
+    <div id="lightbox">
+      <div class="row-between">
+        <h3 class="no-margin" id="lightbox-title"></h3>
+        <button id="lightbox-close-btn" class="secondary">Close</button>
+      </div>
+      <div id="lightbox-media"></div>
+    </div>
+  </div>
+
+  <!-- COURSE DETAIL (read-only) -->
+  <div id="course-modal-backdrop" hidden>
+    <div id="course-modal" role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
+      <div class="row-between">
+        <h3 class="no-margin" id="course-modal-title"></h3>
+        <button id="course-modal-close-btn" class="secondary" type="button">Close</button>
+      </div>
+      <div id="course-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- COVER PICKER -->
+  <div id="cover-modal-backdrop" hidden>
+    <div id="cover-modal" role="dialog" aria-modal="true" aria-labelledby="cover-modal-title">
+      <div class="row-between">
+        <h3 class="no-margin" id="cover-modal-title">Choose a cover</h3>
+        <button id="cover-modal-close-btn" class="secondary" type="button">Close</button>
+      </div>
+      <div id="cover-grid"></div>
+    </div>
+  </div>
+
+  <!-- PROGRAM CLONE / IMPORT -->
+  <div id="pio-modal-backdrop" hidden>
+    <div id="pio-modal" role="dialog" aria-modal="true" aria-labelledby="pio-modal-title">
+      <div class="row-between">
+        <h3 class="no-margin" id="pio-modal-title"></h3>
+        <button id="pio-modal-close-btn" class="secondary" type="button">Close</button>
+      </div>
+      <div id="pio-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+</div>
+<footer id="app-version" class="app-version" hidden></footer>
+<script src="i18n-de.js"></script>
+<script src="i18n-fr.js"></script>
+<script src="i18n-it.js"></script>
+<script src="i18n-ko.js"></script>
+<script src="i18n-zh.js"></script>
+<script src="i18n-ja.js"></script>
+<script src="i18n.js"></script>
+<script src="units-core.js"></script>
+<script src="weight-mode-core.js"></script>
+<script src="units.js"></script>
+<script src="theme-core.js"></script>
+<script src="theme.js"></script>
+<script src="theme-fx-core.js"></script>
+<script src="theme-fx.js"></script>
+<script src="theme-fx-xmas.js"></script>
+<script src="theme-fx-halloween.js"></script>
+<script src="planner-core.js"></script>
+<script src="movements-core.js"></script>
+<script src="custom-action-core.js"></script>
+<script src="courses-core.js"></script>
+<script src="program-io-core.js"></script>
+<script src="fitness-core.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="activity-core.js"></script>
+<script src="version.js"></script>
+<script src="footer-version.js"></script>
+<script src="app.js"></script>
+<script src="program-io.js"></script>
+<script src="planner.js"></script>
+<script src="movements.js"></script>
+<script src="courses.js"></script>
+<script src="fitness.js"></script>
+<script src="activity-report.js"></script>
+<script src="activity-explorer.js"></script>
+<script src="activity-dashboard.js"></script>
+</body>
+</html>

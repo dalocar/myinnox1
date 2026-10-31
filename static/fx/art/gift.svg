@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="6" y="20" width="36" height="25" rx="2" fill="var(--fx-cranberry, #b3122b)"/><rect x="3" y="14" width="42" height="10" rx="2" fill="var(--fx-cranberry-l, #d41f3a)"/>
+<rect class="ribbon" x="21" y="14" width="6" height="31" fill="var(--fx-gold, #e0a800)"/>
+<path class="bow" d="M24 14C16 14 10 9 12 5C15 1 22 6 24 14C26 6 33 1 36 5C38 9 32 14 24 14Z" fill="var(--fx-gold, #e0a800)" stroke="var(--fx-gold-d, #c78a00)" stroke-width="1.2" stroke-linejoin="round"/></svg>

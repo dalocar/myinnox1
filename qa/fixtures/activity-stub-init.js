@@ -1,0 +1,1 @@
+../activity-stub-init.js

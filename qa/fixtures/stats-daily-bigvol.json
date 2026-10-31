@@ -1,0 +1,80 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": "2147485209.4x",
+    "totalConsume": 890446.0,
+    "totalCapacity": 10700032,
+    "totalDistance": 0,
+    "dailyList": [
+      {
+        "sportDate": "2026-10-25",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 1086.0,
+        "realConsume": 363.0,
+        "realCapacity": 0,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-26",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 68,
+        "realConsume": 9,
+        "realCapacity": 1,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-27",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 136,
+        "realConsume": 18,
+        "realCapacity": 5,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-28",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 203,
+        "realConsume": 27,
+        "realCapacity": 10,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-29",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 271,
+        "realConsume": 36,
+        "realCapacity": 16,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-30",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 2426656522,
+        "realConsume": 889999,
+        "realCapacity": 10700000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-31",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": "x",
+        "realConsume": -4,
+        "realCapacity": null,
+        "realDistance": 0
+      }
+    ],
+    "monthList": null
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

@@ -1,0 +1,12 @@
+(()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));
+window.__w=w;
+window.__scan=(rootId)=>{const lin=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)};const lum=a=>{const l=a.slice(0,3).map(lin);return .2126*l[0]+.7152*l[1]+.0722*l[2]};const p=c=>{const m=c.match(/[\d.]+/g).map(Number);return m.length<4?[...m,1]:m};const over=(f,b)=>[0,1,2].map(i=>f[i]*f[3]+b[i]*(1-f[3])).concat([1]);
+const bgOf=(el)=>{const st=[];for(let e=el;e;e=e.parentElement){const c=p(getComputedStyle(e).backgroundColor);if(c[3]>0)st.push(c);if(c[3]>=1)break}let b=p(getComputedStyle(document.body).backgroundColor);if(b[3]===0)b=[255,255,255,1];for(let i=st.length-1;i>=0;i--)b=over(st[i],b);return b};
+const root=document.getElementById(rootId);const bad=[];const wk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let tn;const seen=new Set();
+while(tn=wk.nextNode()){if(!tn.textContent.trim())continue;const el=tn.parentElement;if(seen.has(el))continue;seen.add(el);const cs=getComputedStyle(el);if(cs.visibility==="hidden"||cs.display==="none"||el.closest(".sr-only")||el.getBoundingClientRect().width===0)continue;if(el.closest("button:disabled,[aria-disabled=true]")||el.closest(".rp-hero"))continue;let op=1;for(let e=el;e&&e!==root.parentElement;e=e.parentElement)op*=+getComputedStyle(e).opacity;
+ const bg=bgOf(el),fg=p(cs.color);const f=over([fg[0],fg[1],fg[2],fg[3]*op],bg);const a=lum(f),b=lum(bg);const ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);const fs=parseFloat(cs.fontSize),fw=+cs.fontWeight;const large=fs>=24||(fs>=18.66&&fw>=700);if(ratio<(large?3:4.5))bad.push([el.className||el.tagName,tn.textContent.trim().slice(0,22),+ratio.toFixed(2)])}
+return bad};
+window.__allviews=async()=>{const R={};switchTab("history"); await w(1300); R.dash=__scan("act-dashboard"); document.getElementById("act-medal-btn").click(); await w(800); R.medals=__scan("act-medals"); document.getElementById("act-medals-back").click(); await w(600);
+ document.querySelector(".act-today-btn").click(); await w(900); const x=document.getElementById("act-explorer"); for(const v of ["day","week","year"]){x.querySelector(`[data-view="${v}"]`).click(); await w(1100); R["ex_"+v]=__scan("act-explorer")} x.querySelector("#aex-back,.aex-back").click(); await w(600);
+ document.querySelector(".act-linkcard").click(); await w(1000); R.report=__scan("act-report"); document.querySelector(".rp-back").click(); await w(500); return Object.fromEntries(Object.entries(R).map(([k,v])=>[k,v.length?v:"ok"]))};
+return "lib ok"})()

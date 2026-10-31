@@ -1,0 +1,89 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 4828,
+    "totalConsume": 828,
+    "totalCapacity": 8028,
+    "totalDistance": 0,
+    "dailyList": [
+      {
+        "sportDate": "2026-03-08",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 600,
+        "realConsume": 100,
+        "realCapacity": 1000,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-03-28",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 601,
+        "realConsume": 101,
+        "realCapacity": 1001,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-03-29",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 602,
+        "realConsume": 102,
+        "realCapacity": 1002,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-03-30",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 603,
+        "realConsume": 103,
+        "realCapacity": 1003,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-24",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 604,
+        "realConsume": 104,
+        "realCapacity": 1004,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-25",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 605,
+        "realConsume": 105,
+        "realCapacity": 1005,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-10-26",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 606,
+        "realConsume": 106,
+        "realCapacity": 1006,
+        "realDistance": 0
+      },
+      {
+        "sportDate": "2026-11-01",
+        "targetDuration": 1800,
+        "targetConsume": 500,
+        "realDuration": 607,
+        "realConsume": 107,
+        "realCapacity": 1007,
+        "realDistance": 0
+      }
+    ],
+    "monthList": null
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

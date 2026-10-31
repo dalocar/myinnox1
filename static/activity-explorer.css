@@ -1,0 +1,90 @@
+/* Activity Explorer. Theme tokens only (var(--...)), no colour literals. */
+.aex { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.aex-top { display: flex; align-items: center; gap: 12px; }
+.aex-top h2 { margin: 0; font-size: 20px; }
+.aex-top .secondary { min-height: 40px; flex: none; }
+.aex-seg { width: 100%; }
+.aex-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aex-date { flex: 1 1 auto; text-align: center; font-size: 18px; font-weight: 700; color: var(--text); min-width: 0; }
+.aex-arrow { min-width: 44px; min-height: 44px; padding: 0; font-size: 24px; line-height: 1; flex: none; }
+.aex-arrow[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
+.aex-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.aex-status { text-align: center; padding: 32px 0; }
+.aex-error .secondary { margin-left: 8px; min-height: 36px; }
+
+.aex-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; min-width: 0; }
+.aex-h { margin: 0 0 10px; font-size: 15px; color: var(--text); }
+
+/* rings */
+.aex-track { fill: none; stroke: var(--border); }
+.aex-arc { fill: none; stroke-linecap: round; }
+.aex-arc.is-consume { stroke: var(--danger); }
+.aex-arc.is-duration { stroke: var(--act-duration); }
+.aex-strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.aex-strip li { min-width: 0; }
+.aex-day {
+  width: 100%; min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 12px; box-shadow: none; font-weight: 500;
+}
+.aex-day:hover { background: var(--surface-2); }
+.aex-day.is-sel { background: var(--primary-soft); border-color: var(--primary); color: var(--text); }
+.aex-day.is-future { opacity: .45; cursor: not-allowed; }
+.aex-wd { font-size: 11px; }
+.aex-dn { font-size: 13px; font-weight: 700; }
+.aex-ring-sm { width: 100%; max-width: 40px; height: auto; display: block; }
+.aex-grade { font-size: 12px; font-weight: 800; color: var(--primary); min-height: 16px; line-height: 16px; }
+.aex-daysum { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: center; }
+.aex-bigring { width: 160px; max-width: 45vw; flex: none; }
+.aex-ring-lg { width: 100%; height: auto; display: block; }
+.aex-stats { display: flex; flex-direction: column; gap: 10px; flex: 1 1 140px; min-width: 0; }
+.aex-stat { display: flex; flex-direction: column; border-left: 4px solid var(--border); padding-left: 10px; }
+.aex-stat.is-consume { border-left-color: var(--danger); }
+.aex-stat.is-duration { border-left-color: var(--act-duration); }
+.aex-stat-label { font-size: 13px; color: var(--muted); }
+.aex-stat-val strong { font-size: 26px; color: var(--text); }
+.aex-stat-val small { font-size: 13px; color: var(--muted); }
+
+/* charts */
+.aex-charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.aex-chart { position: relative; height: 210px; width: 100%; }
+.aex-tablewrap { max-width: 100%; overflow-x: auto; }
+.aex-note { margin: 8px 0 0; text-align: center; }
+.aex-top h2:focus { outline: none; }
+.aex-top h2:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.aex-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
+.aex-table th, .aex-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.aex-table th:first-child { text-align: left; }
+.aex-table thead th { color: var(--muted); font-weight: 600; }
+
+/* equivalents */
+.aex-eqs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.aex-eq { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 14px; font-weight: 600; color: var(--text); }
+.aex-illus { width: 64px; height: 64px; }
+.aex-illus .il-a { fill: var(--danger); }
+.aex-illus .il-b { fill: var(--warn); }
+.aex-illus .il-c { fill: var(--text-2); }
+.aex-illus .il-d { fill: var(--ok); }
+.aex-illus .il-w { fill: var(--surface); }
+.aex-illus .il-s, .aex-empty-illus .il-s { fill: none; stroke: var(--text-2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* recent activity */
+.aex-recent { display: flex; flex-direction: column; min-width: 0; }
+.aex-recent-h { margin-bottom: 8px; }
+.aex-recs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.aex-rec {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; flex-wrap: wrap;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: none; padding: 10px 12px; min-height: 44px; font-weight: 400;
+}
+.aex-rec:hover { background: var(--surface-2); border-color: var(--border-hover); }
+.aex-rec-main { display: flex; flex-direction: column; min-width: 0; flex: 1 1 140px; }
+.aex-rec-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.aex-rec-stats { display: flex; gap: 12px; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
+.aex-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.aex-empty p { margin: 0; }
+.aex-empty-illus { width: 96px; height: 72px; }
+.aex-empty-illus .il-b { fill: var(--primary-soft); stroke: var(--primary); stroke-width: 2; }
+
+@media (min-width: 768px) {
+  .aex-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aex-day { padding: 10px 4px; }
+}

@@ -1,0 +1,16 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 0,
+    "totalConsume": 0,
+    "totalCapacity": 0,
+    "totalDistance": 0,
+    "dailyList": null,
+    "monthList": null
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

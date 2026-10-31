@@ -1,0 +1,145 @@
+/* HallowFit decorations. Only transform/opacity animate. "subtle" mode and reduced motion
+   strip all animation (theme-fx.css), so every base state below is a finished static picture.
+   html.hf-lite (data-heavy tabs) parks everything: no bats, no drifting fog, spiders hang still. */
+/* Art tokens (SVGs in fx/art use var(--fx-*, fallback)); values mirror the fallbacks. */
+html[data-theme="hallowfit"] {
+  --fx-pumpkin: #ff8a1f; --fx-pumpkin-d: #e06a00; --fx-purple: #b45cff; --fx-purple-d: #3a2850;
+  --fx-slime: #9dff4a; --fx-bone: #f4ecff; --fx-ink: #120d1a; --fx-stone: #6d6485; --fx-stone-hi: #9a90b8;
+  --fx-candy-y: #ffc928; --fx-gold: #ffc928; --fx-pine: #1f7a4d; --fx-web: #cdbce6;
+}
+#fx-root .hf { position: absolute; line-height: 0; }
+#fx-root .hf svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* --- cobwebs (back layer, can never cover content) --- */
+.hf-web { top: 0; left: 0; width: 48px; color: var(--fx-web, #cdbce6); opacity: .4; transform-origin: 0 0; animation: hf-sway 9s ease-in-out infinite alternate; }
+.hf-web.r { left: auto; right: 0; transform-origin: 100% 0; animation-duration: 11s; }
+.hf-web.r svg { transform: scaleX(-1); }
+@keyframes hf-sway { from { transform: rotate(-1.2deg); } to { transform: rotate(1.4deg); } }
+@media (min-width: 720px) { .hf-web { width: 72px; } }
+
+/* --- fog (back layer, <= .12) --- */
+.hf-fog { left: 0; bottom: 0; width: 200%; height: 130px; opacity: .1; will-change: transform;
+  background: radial-gradient(ellipse 50% 100% at 50% 100%, var(--fx-purple, #b45cff), transparent 70%) 0 0 / 25% 100% repeat-x;
+  animation: hf-drift 90s linear infinite; }
+.hf-fog.b { height: 110px; bottom: 0; opacity: .07;
+  background: radial-gradient(ellipse 50% 70% at 50% 70%, var(--fx-slime, #9dff4a), transparent 70%) 0 0 / 20% 100% repeat-x;
+  animation: hf-drift-r 70s linear infinite; }
+@keyframes hf-drift { to { transform: translateX(-50%); } }
+@keyframes hf-drift-r { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+
+/* --- glowing eyes in the dark corner (back layer) --- */
+.hf-eyes { left: 12px; bottom: calc(var(--tabbar-h, 64px) + env(safe-area-inset-bottom) + 64px); width: 40px; opacity: .85; }
+.hf-eyes .eye { transform-box: fill-box; transform-origin: 50% 50%; }
+.hf-eyes.blink .eye { animation: hf-blink .5s ease-in-out 2; }
+@keyframes hf-blink { 0%, 100% { transform: scaleY(1); } 40%, 60% { transform: scaleY(.08); } }
+@media (min-width: 720px) { .hf-eyes { bottom: 16px; left: 18px; width: 48px; } }
+
+/* --- spiders (front layer; gutters and header edge only) --- */
+.hf-sp { top: 0; width: var(--w); --w: 17px; --d: 64px; --ry: calc(var(--d) * .55); --rs: .55; }
+.hf-sp.s1 { left: 0; }
+.hf-sp.s2 { right: 0; --d: 40px; }
+.hf-sp.s3 { left: 50%; margin-left: -9px; --w: 18px; --d: 5px; --ry: 0px; --rs: 1; }
+html[data-fx="full"]:not(.hf-lite) .hf-sp { --ry: calc(var(--w) * -1.5); --rs: 0; }
+.hf-th { position: absolute; left: 50%; top: 0; width: 1px; height: var(--d); margin-left: -.5px; background: rgba(244, 236, 255, .5); transform-origin: 50% 0; transform: scaleY(var(--rs)); }
+.hf-sb { position: absolute; left: 0; top: 0; width: 100%; transform: translateY(var(--ry)); }
+.hf-sp.go .hf-sb { animation: hf-drop 9s ease-in-out 1 both; }
+.hf-sp.go .hf-th { animation: hf-thread 9s ease-in-out 1 both; }
+@keyframes hf-drop { 0% { transform: translateY(calc(var(--w) * -1.5)); } 20%, 62% { transform: translateY(var(--d)); } 90%, 100% { transform: translateY(calc(var(--w) * -1.5)); } }
+@keyframes hf-thread { 0% { transform: scaleY(0); } 20%, 62% { transform: scaleY(1); } 90%, 100% { transform: scaleY(0); } }
+.hf-sp .legs-l { transform-box: view-box; transform-origin: 17px 30px; }
+.hf-sp .legs-r { transform-box: view-box; transform-origin: 31px 30px; }
+.hf-sp.go .legs-l { animation: hf-legl .45s ease-in-out infinite alternate; }
+.hf-sp.go .legs-r { animation: hf-legr .45s ease-in-out infinite alternate; }
+@keyframes hf-legl { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
+@keyframes hf-legr { from { transform: rotate(5deg); } to { transform: rotate(-6deg); } }
+@media (min-width: 1112px) {
+  .hf-sp { --w: 30px; --d: 110px; }
+  .hf-sp.s1 { left: calc(50vw - 560px); }
+  .hf-sp.s2 { right: calc(50vw - 560px); --d: 80px; }
+  .hf-sp.s3 { --w: 22px; --d: 5px; margin-left: -11px; }
+}
+
+/* surprise scuttle along the bottom edge */
+.hf-run { left: 0; width: 26px; bottom: calc(var(--tabbar-h, 64px) + env(safe-area-inset-bottom) + 2px); animation: hf-scuttle 3.4s linear 1 both; }
+.hf-run .thread { display: none; }
+.hf-run svg { transform: rotate(90deg); }
+.hf-run .legs-l, .hf-run .legs-r { transform-box: view-box; animation: hf-legl .2s ease-in-out infinite alternate; }
+.hf-run .legs-l { transform-origin: 17px 30px; } .hf-run .legs-r { transform-origin: 31px 30px; animation-name: hf-legr; }
+@keyframes hf-scuttle { from { transform: translateX(-40px); } to { transform: translateX(calc(100vw + 40px)); } }
+@media (min-width: 720px) { .hf-run { bottom: 3px; } }
+
+/* --- pumpkin peeking over the tab bar corner, flickering glow --- */
+.hf-pump { left: 4px; bottom: calc(var(--tabbar-h, 64px) + env(safe-area-inset-bottom) - 12px); width: 40px; }
+@media (min-width: 720px) { .hf-pump { left: 14px; bottom: -8px; width: 58px; } }
+.hf-pump .glow-halo { animation: hf-flick 8.3s linear infinite; }
+.hf-pump .face { animation: hf-flick2 7.1s linear infinite; }
+@keyframes hf-flick { 0%, 100% { opacity: 1; } 8% { opacity: .55; } 14% { opacity: .9; } 31% { opacity: .65; } 38% { opacity: 1; } 57% { opacity: .5; } 63% { opacity: .85; } 82% { opacity: .7; } 90% { opacity: 1; } }
+@keyframes hf-flick2 { 0%, 100% { opacity: 1; } 11% { opacity: .75; } 19% { opacity: .95; } 44% { opacity: .6; } 52% { opacity: .9; } 71% { opacity: .7; } 77% { opacity: 1; } }
+
+/* --- ghost bottom-right, with a floating Boo! --- */
+.hf-ghost { right: 6px; bottom: calc(var(--tabbar-h, 64px) + env(safe-area-inset-bottom) + 8px); width: 34px; opacity: .85; animation: hf-bob 4.2s ease-in-out infinite alternate; }
+@media (min-width: 720px) { .hf-ghost { right: 18px; bottom: 16px; width: 46px; } }
+@keyframes hf-bob { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+.hf-boo { position: absolute; left: 50%; bottom: 100%; margin-left: -20px; width: 40px; text-align: center; font: 800 15px/1 Inter, system-ui, sans-serif; color: var(--fx-bone, #f4ecff); text-shadow: 0 1px 2px var(--fx-ink, #120d1a); animation: hf-boo 1.5s ease-out 1 both; }
+@keyframes hf-boo { from { transform: translateY(4px) scale(.7); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(-26px) scale(1.15); opacity: 0; } }
+
+/* --- bats --- */
+.hf-bat { left: 0; width: 38px; top: 12vh; animation: hf-fly 13s linear 1 both; }
+.hf-bat.rtl { left: auto; right: 0; animation-name: hf-fly-r; }
+.hf-bat.rtl svg { transform: scaleX(-1); }
+.hf-bat.fast { animation-duration: 6s; }
+.hf-bat > .in { animation: hf-bobb 1.4s ease-in-out infinite alternate; }
+@keyframes hf-fly { from { transform: translateX(-60px); } to { transform: translateX(calc(100vw + 60px)); } }
+@keyframes hf-fly-r { from { transform: translateX(60px); } to { transform: translateX(calc(-100vw - 60px)); } }
+@keyframes hf-bobb { from { transform: translateY(-9px); } to { transform: translateY(9px); } }
+.hf-bat .wing-l, .hf-bat .wing-r { transform-box: view-box; animation: hf-wl .5s ease-in-out infinite alternate; }
+.hf-bat .wing-l { transform-origin: 22px 12px; }
+.hf-bat .wing-r { transform-origin: 26px 12px; animation-name: hf-wr; }
+@keyframes hf-wl { from { transform: rotate(-16deg) scaleY(1); } to { transform: rotate(14deg) scaleY(.6); } }
+@keyframes hf-wr { from { transform: rotate(16deg) scaleY(1); } to { transform: rotate(-14deg) scaleY(.6); } }
+html.hf-lite .hf-bat { display: none; }
+
+/* bat perched on the logo (lives inside .brand-mark) */
+html[data-theme="hallowfit"] .brand-mark { position: relative; }
+.hf-perch { position: absolute; top: -10px; left: 50%; width: 26px; margin-left: -13px; line-height: 0; pointer-events: none; }
+.hf-perch svg { display: block; width: 100%; height: auto; overflow: visible; }
+.hf-perch .wing-l, .hf-perch .wing-r { transform-box: view-box; }
+.hf-perch .wing-l { transform-origin: 12px 7px; }
+.hf-perch .wing-r { transform-origin: 16px 7px; }
+.hf-perch.flut .wing-l { animation: hf-wl .3s ease-in-out 4 alternate; }
+.hf-perch.flut .wing-r { animation: hf-wr .3s ease-in-out 4 alternate; }
+.hf-perch.flee { animation: hf-flee 1.6s ease-in 1 forwards; }
+.hf-perch.flee .wing-l { animation: hf-wl .25s ease-in-out infinite alternate; }
+.hf-perch.flee .wing-r { animation: hf-wr .25s ease-in-out infinite alternate; }
+.hf-perch.ret { animation: hf-ret .8s ease-out 1 both; }
+@keyframes hf-flee { to { transform: translate(90px, -80px) scale(.6); opacity: 0; } }
+@keyframes hf-ret { from { opacity: 0; } to { opacity: 1; } }
+.hf-perch.gone { visibility: hidden; }
+
+/* --- cards: tiny cobweb on the top-right corner, a pumpkin on the first card (no layout change) --- */
+html[data-theme="hallowfit"]:not([data-fx="off"]) :is(.program-card, .record-card, .action-card) { position: relative; }
+html[data-theme="hallowfit"]:not([data-fx="off"]) :is(.program-card, .record-card, .action-card)::after {
+  content: ""; position: absolute; top: 1px; right: 1px; width: 20px; height: 20px; opacity: .5; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M24 0L1.0 0.0M24 0L2.7 8.6M24 0L7.7 16.3M24 0L15.4 21.3M24 0L24.0 23.0M16.0 0.0Q17.7 1.2 16.6 3.0M16.6 3.0Q18.7 3.5 18.3 5.7M18.3 5.7Q20.5 5.3 21.0 7.4M21.0 7.4Q22.8 6.3 24.0 8.0M8.0 0.0Q11.4 2.4 9.2 6.0M9.2 6.0Q13.3 7.1 12.7 11.3M12.7 11.3Q16.9 10.7 18.0 14.8M18.0 14.8Q21.6 12.6 24.0 16.0' fill='none' stroke='%23cdbce6' stroke-width='.9' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-theme="hallowfit"]:not([data-fx="off"]) :is(.program-card, .record-card, .action-card):first-child::before {
+  content: ""; position: absolute; top: -13px; left: 16px; width: 24px; height: 22px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M10 4Q10 1 13 0l1 1q-2 1-1 3z' fill='%231f7a4d'/%3E%3Cellipse cx='6' cy='13' rx='5' ry='8' fill='%23e06a00'/%3E%3Cellipse cx='18' cy='13' rx='5' ry='8' fill='%23e06a00'/%3E%3Cellipse cx='10' cy='13' rx='5' ry='8.4' fill='%23ff8a1f'/%3E%3Cellipse cx='14' cy='13' rx='5' ry='8.4' fill='%23ff8a1f'/%3E%3Cpath d='M7 11h3l-1.5-3zM14 11h3l-1.5-3zM6 15q6 6 12 0h-2l-1.5 2-1.5-1.5-1.5 1.5-1.5-2z' fill='%239dff4a'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* --- lite (data-heavy tabs): everything still, no drift --- */
+html.hf-lite .hf-fog, html.hf-lite .hf-web, html.hf-lite .hf-ghost, html.hf-lite .hf-sp *, html.hf-lite .hf-perch, html.hf-lite .hf-perch * { animation: none !important; }
+html.hf-lite .hf-run { display: none; }
+html.hf-lite .hf-pump .glow-halo, html.hf-lite .hf-pump .face { animation-duration: 10s; }
+html[data-fx="subtle"] .hf-perch, html[data-fx="subtle"] .hf-perch *, html.fx-paused .hf-perch, html.fx-paused .hf-perch * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .hf-perch, .hf-perch * { animation: none !important; } }
+
+/* forced colors / print: the decorations that live outside #fx-root (logo bat, card cobwebs and pumpkin) go too */
+@media (forced-colors: active), print {
+  .hf-perch, :is(.program-card, .record-card, .action-card)::before, :is(.program-card, .record-card, .action-card)::after { display: none !important; }
+}
+
+/* first-card pumpkin: very light candle flicker, full mode only (opacity, compositor-only) */
+html[data-theme="hallowfit"][data-fx="full"]:not(.hf-lite):not(.fx-paused) :is(.program-card, .record-card, .action-card):first-child::before { animation: hf-cardflick 7.3s linear infinite; }
+@keyframes hf-cardflick { 0%, 100% { opacity: 1; } 12% { opacity: .84; } 20% { opacity: .96; } 47% { opacity: .8; } 55% { opacity: .95; } 78% { opacity: .86; } }
+@media (prefers-reduced-motion: reduce) { :is(.program-card, .record-card, .action-card):first-child::before { animation: none !important; } }

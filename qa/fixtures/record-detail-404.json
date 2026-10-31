@@ -1,0 +1,9 @@
+{
+  "code": 500,
+  "msg": "record not found",
+  "traceId": "fixture",
+  "data": null,
+  "error": true,
+  "success": false,
+  "warn": false
+}

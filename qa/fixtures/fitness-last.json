@@ -1,0 +1,29 @@
+{
+  "code": 200,
+  "data": [
+    {
+      "testId": 452,
+      "testTime": "2026-10-30",
+      "testType": 2,
+      "resultValue": 38.1,
+      "resultLevel": "S+",
+      "resultLevelPercent": 90.48
+    },
+    {
+      "testId": 451,
+      "testTime": "2026-10-30",
+      "testType": 4,
+      "resultValue": 176.7,
+      "resultLevel": "S",
+      "resultLevelPercent": 85.05
+    },
+    {
+      "testId": 391,
+      "testTime": "2026-10-28",
+      "testType": 3,
+      "resultValue": 50.9,
+      "resultLevel": "C",
+      "resultLevelPercent": 8.98
+    }
+  ]
+}

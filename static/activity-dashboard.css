@@ -1,0 +1,123 @@
+/* Activity Dashboard + Medals. Theme tokens only (var(--...)), no colour literals. */
+#act-dashboard, #act-medals { min-width: 0; }
+.act-head { margin-bottom: 12px; }
+.act-head h2 { margin: 0; }
+#act-dashboard h3, #act-medals h3 { margin: 0; font-size: 15px; color: var(--text-2); font-weight: 600; }
+
+.act-state { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.act-empty { text-align: left; }
+.act-error {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  color: var(--danger-text); background: var(--danger-soft); border: 1px solid var(--danger-border);
+  border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere;
+}
+.act-retry { min-height: 36px; padding: 0 12px; }
+
+/* ---- today ring ---- */
+.act-today { margin-bottom: 14px; }
+.act-today-btn {
+  display: flex; align-items: center; gap: 18px; width: 100%; text-align: left;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);
+}
+.act-today-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.act-ring { width: 120px; height: 120px; flex: none; transform: rotate(-90deg); }
+.act-track { fill: none; stroke: var(--border); stroke-width: 10; }
+.act-arc { fill: none; stroke-width: 10; stroke-linecap: round; animation: act-draw .8s ease-out both; }
+.act-consume { stroke: var(--danger); }
+.act-duration { stroke: var(--act-duration); }
+@keyframes act-draw { from { stroke-dasharray: 0 var(--len); } }
+.act-today-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.act-today-title { font-size: 15px; font-weight: 700; }
+.act-stat { display: block; position: relative; padding-left: 18px; }
+.act-dot { position: absolute; left: 0; top: 8px; width: 10px; height: 10px; border-radius: 50%; }
+.act-stat-consume .act-dot { background: var(--danger); }
+.act-stat-duration .act-dot { background: var(--act-duration); }
+.act-num { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.act-unit { font-size: 13px; color: var(--muted); }
+.act-lbl { display: block; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.act-chev { flex: none; width: 10px; height: 10px; border-top: 2px solid var(--muted); border-right: 2px solid var(--muted); transform: rotate(45deg); margin-right: 4px; }
+
+/* ---- cards ---- */
+.act-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
+.act-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; min-width: 0; box-shadow: var(--shadow-sm);
+}
+.act-medalcard { margin-bottom: 18px; }
+.act-body { margin-top: 8px; min-width: 0; }
+.act-big { margin: 0; display: block; }
+.act-big .act-num { font-size: 22px; }
+.act-sep { color: var(--muted); margin: 0 2px; }
+.act-sub { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.act-bars { display: block; width: 100%; height: 44px; margin-top: 10px; }
+.act-bar { fill: var(--danger); }
+.act-bar-zero { fill: var(--border-strong); }
+.act-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.act-axis-7 span { flex: 1; text-align: center; }
+.act-now { color: var(--text); font-weight: 700; text-decoration: underline; }
+.act-linkcard {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; position: relative;
+  width: 100%; text-align: left; padding: 0 22px 0 0; min-height: 44px; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text); border: 0; box-shadow: none; font-weight: 400;
+}
+.act-linkcard:hover { background: transparent; }
+.act-linkcard .act-chev { position: absolute; right: 2px; top: 50%; margin-top: -5px; }
+.act-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.act-medal-btn {
+  min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--input-border); box-shadow: none;
+}
+.act-medal-btn:hover { background: var(--surface-2); }
+.act-medal-btn .act-chev { margin: 0 4px 0 0; }
+
+/* ---- medals ---- */
+.act-medal-row, .act-medal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.act-medal { margin: 0; text-align: center; min-width: 0; }
+.act-medal img, .act-medal-fb { display: block; width: 100%; max-width: 96px; aspect-ratio: 1; margin: 0 auto; object-fit: contain; }
+.act-medal.is-locked img { filter: grayscale(1); opacity: .55; }
+.act-medal figcaption { font-size: 12px; color: var(--text-2); margin-top: 4px; overflow-wrap: anywhere; }
+.act-medal-fb {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%;
+  border: 3px solid var(--primary); background: var(--primary-soft); color: var(--text); line-height: 1.1;
+}
+.act-medal-fb b { font-size: 16px; }
+.act-medal-fb small { font-size: 11px; color: var(--muted); }
+.is-locked .act-medal-fb { border-color: var(--border-strong); background: var(--surface-2); opacity: .7; }
+.act-medal-group { margin-bottom: 16px; }
+.act-medal-group h3 { margin-bottom: 8px; }
+#act-medals .act-head { justify-content: flex-start; gap: 12px; align-items: center; }
+#act-medals .act-head > .act-back { flex: none; }
+
+/* ---- recent activity ---- */
+.act-recent h3 { margin-bottom: 8px; }
+.act-rec { padding: 0; align-items: stretch; }
+.act-rec-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0; text-align: left;
+  background: transparent; color: var(--text); border: 0; box-shadow: none; font-weight: 400;
+  padding: 12px 14px; border-radius: var(--radius);
+}
+.act-rec-main:hover { background: var(--surface-2); }
+.act-rec-main .name { font-weight: 600; }
+.act-rec-main .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.act-del { align-self: center; flex: none; margin-right: 12px; }
+
+@media (min-width: 560px) {
+  .act-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 380px) {
+  .act-today-btn { gap: 12px; padding: 12px; }
+  .act-ring { width: 96px; height: 96px; }
+  .act-num { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .act-arc { animation: none; }
+}
+#act-medals-title:focus { outline: none; box-shadow: none; }
+
+#act-title:focus { outline: none; }
+.act-skel { display: grid; gap: 8px; margin-top: 8px; }
+.act-skel span { display: block; height: 14px; border-radius: 7px; background: var(--border); animation: act-pulse 1.2s ease-in-out infinite; }
+.act-skel span:first-child { width: 60%; height: 20px; }
+@keyframes act-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .act-skel span { animation: none; } }

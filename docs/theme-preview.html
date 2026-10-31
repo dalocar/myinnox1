@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en" data-theme="default">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>INNODIGYM themes preview</title>
+<style>
+[data-theme="default"] {
+  color-scheme: light;
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e3e8f0;
+  --border-strong: #cbd5e1;
+  --input-border: #7e8ea4;
+  --border-hover: #94a3b8;
+  --text: #0f172a;
+  --text-2: #475569;
+  --muted: #5b6a80;
+  --placeholder: #64748b;
+  --primary: #0f766e;
+  --primary-hover: #115e59;
+  --primary-soft: #e6f6f4;
+  --primary-border: #b6e3dd;
+  --on-primary: #ffffff;
+  --accent: #84cc16;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #b91c1c;
+  --on-danger: #ffffff;
+  --ok: #15803d;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --warn-border: #fcd34d;
+  --warn-text: #78350f;
+  --warn-hover: #fef3c7;
+  --chip-official-bg: #eef2ff;
+  --chip-official-fg: #3730a3;
+  --chip-official-border: #c7d2fe;
+  --toast-bg: #0f172a;
+  --toast-fg: #ffffff;
+  --tabbar-bg: rgba(255,255,255,.92);
+  --scrim: rgba(15,23,42,.5);
+  --scrim-strong: rgba(15,23,42,.7);
+  --focus: #0f766e;
+  --ring: 0 0 0 3px rgba(15,118,110,.25);
+  --brand-1: #0f766e;
+  --brand-2: #14b8a6;
+  --brand-3: #84cc16;
+  --brand-fg: #ffffff;
+  --brand-shadow: 0 6px 16px -4px rgba(15,118,110,.5);
+  --glow-1: rgba(132,204,22,.14);
+  --glow-2: rgba(15,118,110,.12);
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
+  --shadow: 0 1px 3px rgba(15,23,42,.06), 0 8px 24px -8px rgba(15,23,42,.10);
+  --shadow-lg: 0 24px 48px -12px rgba(15,23,42,.25);
+  --shadow-hover: 0 6px 16px rgba(15,23,42,.12);
+  --shadow-menu: 0 10px 30px rgba(15,23,42,.18);
+  --shadow-tabbar: 0 -4px 16px rgba(15,23,42,.06);
+  --img-filter: none;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1523;
+  --surface: #151e30;
+  --surface-2: #1c273b;
+  --border: #2a364d;
+  --border-strong: #3d4c66;
+  --input-border: #7a8aa6;
+  --border-hover: #9aa9c2;
+  --text: #e8edf6;
+  --text-2: #b7c2d6;
+  --muted: #98a5bc;
+  --placeholder: #8795ae;
+  --primary: #2dd4bf;
+  --primary-hover: #5eead4;
+  --primary-soft: #123a3d;
+  --primary-border: #1f5d5c;
+  --on-primary: #04211e;
+  --accent: #a3e635;
+  --danger: #f87171;
+  --danger-soft: #3a1c22;
+  --danger-border: #7f2f38;
+  --danger-text: #fca5a5;
+  --on-danger: #2a0a0c;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --warn-soft: #2d2410;
+  --warn-border: #6b5316;
+  --warn-text: #fde68a;
+  --warn-hover: #3a2e12;
+  --chip-official-bg: #25285a;
+  --chip-official-fg: #c7d2fe;
+  --chip-official-border: #454a99;
+  --toast-bg: #e8edf6;
+  --toast-fg: #0e1523;
+  --tabbar-bg: rgba(21,30,48,.92);
+  --scrim: rgba(3,7,16,.65);
+  --scrim-strong: rgba(3,7,16,.82);
+  --focus: #5eead4;
+  --ring: 0 0 0 3px rgba(94,234,212,.35);
+  --brand-1: #14b8a6;
+  --brand-2: #2dd4bf;
+  --brand-3: #a3e635;
+  --brand-fg: #04211e;
+  --brand-shadow: 0 6px 16px -4px rgba(45,212,191,.35);
+  --glow-1: rgba(163,230,53,.05);
+  --glow-2: rgba(45,212,191,.09);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.40);
+  --shadow: 0 1px 3px rgba(0,0,0,.40), 0 8px 24px -8px rgba(0,0,0,.55);
+  --shadow-lg: 0 24px 48px -12px rgba(0,0,0,.70);
+  --shadow-hover: 0 6px 16px rgba(0,0,0,.50);
+  --shadow-menu: 0 10px 30px rgba(0,0,0,.60);
+  --shadow-tabbar: 0 -4px 16px rgba(0,0,0,.35);
+  --img-filter: brightness(.9);
+}
+[data-theme="ember"] {
+  color-scheme: light;
+  --bg: #faf4ec;
+  --surface: #fffdf9;
+  --surface-2: #fbf5ec;
+  --border: #ecdfcc;
+  --border-strong: #d9c6aa;
+  --input-border: #8d765a;
+  --border-hover: #a38b6c;
+  --text: #2a1c11;
+  --text-2: #5a4536;
+  --muted: #755f4c;
+  --placeholder: #85705c;
+  --primary: #8a4a12;
+  --primary-hover: #6b370c;
+  --primary-soft: #f7ebdc;
+  --primary-border: #e2c7a0;
+  --on-primary: #ffffff;
+  --accent: #f5b83d;
+  --danger: #be123c;
+  --danger-soft: #fff1f5;
+  --danger-border: #f5b5c8;
+  --danger-text: #9f1239;
+  --on-danger: #ffffff;
+  --ok: #3f7a1a;
+  --warn: #6b5600;
+  --warn-soft: #fffbd1;
+  --warn-border: #e3cf2c;
+  --warn-text: #4a3b00;
+  --warn-hover: #fff3a0;
+  --chip-official-bg: #f3ebff;
+  --chip-official-fg: #6b21a8;
+  --chip-official-border: #d9c2fa;
+  --toast-bg: #2a1c11;
+  --toast-fg: #fffdf9;
+  --tabbar-bg: rgba(255,253,249,.92);
+  --scrim: rgba(42,28,17,.5);
+  --scrim-strong: rgba(42,28,17,.72);
+  --focus: #8a4a12;
+  --ring: 0 0 0 3px rgba(138,74,18,.28);
+  --brand-1: #6b370c;
+  --brand-2: #a8651a;
+  --brand-3: #f5b83d;
+  --brand-fg: #ffffff;
+  --brand-shadow: 0 6px 16px -4px rgba(107,55,12,.45);
+  --glow-1: rgba(245,184,61,.18);
+  --glow-2: rgba(138,74,18,.09);
+  --shadow-sm: 0 1px 2px rgba(42,28,17,.07);
+  --shadow: 0 1px 3px rgba(42,28,17,.07), 0 8px 24px -8px rgba(42,28,17,.12);
+  --shadow-lg: 0 24px 48px -12px rgba(42,28,17,.28);
+  --shadow-hover: 0 6px 16px rgba(42,28,17,.14);
+  --shadow-menu: 0 10px 30px rgba(42,28,17,.20);
+  --shadow-tabbar: 0 -4px 16px rgba(42,28,17,.07);
+  --img-filter: none;
+}
+[data-theme="tide"] {
+  color-scheme: light;
+  --bg: #eef3fa;
+  --surface: #ffffff;
+  --surface-2: #f5f8fd;
+  --border: #dce5f1;
+  --border-strong: #bccbe0;
+  --input-border: #74869f;
+  --border-hover: #8697b1;
+  --text: #0b1a33;
+  --text-2: #40526c;
+  --muted: #586982;
+  --placeholder: #64748f;
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-soft: #e4ecfd;
+  --primary-border: #bfd1f8;
+  --on-primary: #ffffff;
+  --accent: #06b6d4;
+  --danger: #c81e1e;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #a61b1b;
+  --on-danger: #ffffff;
+  --ok: #15803d;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --warn-border: #fcd34d;
+  --warn-text: #78350f;
+  --warn-hover: #fef3c7;
+  --chip-official-bg: #f1ebff;
+  --chip-official-fg: #5b21b6;
+  --chip-official-border: #d6c8fa;
+  --toast-bg: #0b1a33;
+  --toast-fg: #ffffff;
+  --tabbar-bg: rgba(255,255,255,.92);
+  --scrim: rgba(11,26,51,.5);
+  --scrim-strong: rgba(11,26,51,.72);
+  --focus: #1d4ed8;
+  --ring: 0 0 0 3px rgba(29,78,216,.25);
+  --brand-1: #1d4ed8;
+  --brand-2: #3b82f6;
+  --brand-3: #22d3ee;
+  --brand-fg: #ffffff;
+  --brand-shadow: 0 6px 16px -4px rgba(29,78,216,.45);
+  --glow-1: rgba(34,211,238,.14);
+  --glow-2: rgba(29,78,216,.10);
+  --shadow-sm: 0 1px 2px rgba(11,26,51,.06);
+  --shadow: 0 1px 3px rgba(11,26,51,.06), 0 8px 24px -8px rgba(11,26,51,.11);
+  --shadow-lg: 0 24px 48px -12px rgba(11,26,51,.26);
+  --shadow-hover: 0 6px 16px rgba(11,26,51,.12);
+  --shadow-menu: 0 10px 30px rgba(11,26,51,.18);
+  --shadow-tabbar: 0 -4px 16px rgba(11,26,51,.06);
+  --img-filter: none;
+}
+[data-theme="graphite"] {
+  color-scheme: light;
+  --bg: #ececee;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --border: #c9c9ce;
+  --border-strong: #71717a;
+  --input-border: #52525b;
+  --border-hover: #3f3f46;
+  --text: #09090b;
+  --text-2: #2e2e34;
+  --muted: #46464e;
+  --placeholder: #5f5f68;
+  --primary: #18181b;
+  --primary-hover: #000000;
+  --primary-soft: #e4e4e7;
+  --primary-border: #a1a1aa;
+  --on-primary: #ffffff;
+  --accent: #a3e635;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-border: #e08a8a;
+  --danger-text: #991b1b;
+  --on-danger: #ffffff;
+  --ok: #166534;
+  --warn: #92400e;
+  --warn-soft: #fef3c7;
+  --warn-border: #b7791f;
+  --warn-text: #451a03;
+  --warn-hover: #fde68a;
+  --chip-official-bg: #e0e7ff;
+  --chip-official-fg: #1e1b4b;
+  --chip-official-border: #6366f1;
+  --toast-bg: #09090b;
+  --toast-fg: #ffffff;
+  --tabbar-bg: rgba(255,255,255,.96);
+  --scrim: rgba(9,9,11,.6);
+  --scrim-strong: rgba(9,9,11,.8);
+  --focus: #1d4ed8;
+  --ring: 0 0 0 3px rgba(29,78,216,.45);
+  --brand-1: #18181b;
+  --brand-2: #3f3f46;
+  --brand-3: #a3e635;
+  --brand-fg: #ffffff;
+  --brand-shadow: 0 6px 16px -4px rgba(9,9,11,.4);
+  --glow-1: rgba(163,230,53,.10);
+  --glow-2: rgba(9,9,11,.05);
+  --shadow-sm: 0 1px 2px rgba(9,9,11,.10);
+  --shadow: 0 1px 3px rgba(9,9,11,.10), 0 8px 24px -8px rgba(9,9,11,.14);
+  --shadow-lg: 0 24px 48px -12px rgba(9,9,11,.35);
+  --shadow-hover: 0 6px 16px rgba(9,9,11,.18);
+  --shadow-menu: 0 10px 30px rgba(9,9,11,.25);
+  --shadow-tabbar: 0 -4px 16px rgba(9,9,11,.10);
+  --img-filter: none;
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;font:15px/1.5 Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(900px 400px at 85% -10%,var(--glow-1),transparent 60%),radial-gradient(800px 400px at -10% -10%,var(--glow-2),transparent 60%),var(--bg);background-attachment:fixed;color:var(--text);transition:background .2s,color .2s}
+main{max-width:1240px;margin:0 auto;padding:24px 20px 56px}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em} .lede{color:var(--text-2);margin:0 0 20px;max-width:70ch}
+.pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:28px;border:0;padding:0}
+.pickers legend{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:8px;padding:0}
+.pick{position:relative;display:flex;flex-direction:column;gap:4px;padding:10px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;cursor:pointer;box-shadow:var(--shadow-sm)}
+.pick input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.pick:has(input:checked){border-color:var(--primary);box-shadow:0 0 0 2px var(--primary)}
+.pick:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:3px}
+.pn{font-weight:700;font-size:14px} .pd{font-size:12px;color:var(--text-2);line-height:1.3}
+.mini{display:block;height:58px;border-radius:9px;overflow:hidden;background:var(--bg);border:1px solid var(--border);position:relative;padding:6px}
+.mini.split{display:flex;padding:0} .half{flex:1;position:relative;padding:6px;background:var(--bg)}
+.m-bar{display:block;height:8px;width:55%;border-radius:4px;background:var(--primary);margin-bottom:6px}
+.m-card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px;height:30px}
+.m-card b{display:block;height:5px;width:70%;border-radius:3px;background:var(--text);opacity:.8;margin-bottom:4px}
+.m-card s{display:block;height:5px;width:40%;border-radius:3px;background:var(--accent);text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px}
+.panel{background:var(--bg);color:var(--text);border:1px solid var(--border-strong);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:var(--shadow-lg)}
+.ph{padding:16px 18px 0} .ph h2{margin:0;font-size:18px} .ph p{margin:2px 0 0;font-size:13px;color:var(--text-2)}
+.page{padding:14px 18px 18px;background:radial-gradient(500px 220px at 90% -10%,var(--glow-1),transparent 60%),radial-gradient(500px 220px at -10% -10%,var(--glow-2),transparent 60%),var(--bg);flex:1;position:relative}
+.brandrow{display:flex;align-items:center;gap:10px;margin-bottom:12px} .brandrow b{display:block;font-size:15px;line-height:1.2} .brandrow small{color:var(--muted);font-size:12px}
+.mark{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:var(--brand-fg);background:linear-gradient(135deg,var(--brand-1),var(--brand-2) 60%,var(--brand-3));box-shadow:var(--brand-shadow)} .mark svg{width:27px;height:27px;--logo-cut:var(--brand-2)} .logo-tile{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand-1),var(--brand-2) 60%,var(--brand-3));color:var(--brand-fg);box-shadow:var(--brand-shadow)} .logo-tile svg{width:72px;height:72px;--logo-cut:var(--brand-2)} .logos{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 28px} .logos figure{margin:0;display:flex;flex-direction:column;gap:6px;align-items:center;font-size:12px;color:var(--text-2)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:600 14px/1 inherit;font-family:inherit;background:var(--primary);color:var(--on-primary);border:1px solid transparent;min-height:40px;padding:0 16px;border-radius:10px;cursor:pointer;box-shadow:var(--shadow-sm)}
+.btn:hover{background:var(--primary-hover)}
+.btn.sec{background:var(--surface);color:var(--text);border-color:var(--input-border);box-shadow:none} .btn.sec:hover{background:var(--surface-2);border-color:var(--border-hover)}
+.btn.dng{background:var(--surface);color:var(--danger);border-color:var(--danger-border);box-shadow:none} .btn.dng:hover{background:var(--danger-soft);border-color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.chip.foc{outline:2px solid var(--focus);outline-offset:2px}
+.chip{background:var(--surface);color:var(--text-2);border:1px solid var(--input-border);padding:0 12px;min-height:32px;display:inline-flex;align-items:center;border-radius:999px;font-size:13px;font-weight:500}
+.chip.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)}
+.fld input{font:inherit;font-size:15px;background:var(--surface);color:var(--text);border:1px solid var(--input-border);border-radius:10px;min-height:42px;padding:10px 12px}
+.fld input::placeholder{color:var(--placeholder)} .fld input:focus{outline:none;border-color:var(--primary);box-shadow:var(--ring)}
+.pill{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border)}
+.pill.off{background:var(--chip-official-bg);color:var(--chip-official-fg);border-color:var(--chip-official-border)}
+.meta{font-size:12px;color:var(--muted)}
+.note{background:var(--primary-soft);border:1px solid var(--primary-border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text-2)}
+.note.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-text)}
+.note.err{background:var(--danger-soft);border-color:var(--danger-border);color:var(--danger)}
+.thumbs{display:flex;gap:10px}
+.ph-img{width:64px;height:64px;border-radius:14px;display:grid;place-items:center;overflow:hidden;filter:var(--img-filter);border:3px solid transparent}
+.ph-img.white{background:#fff;color:#334155} .ph-img svg{width:30px;height:30px}
+.ph-img.photo{background:linear-gradient(160deg,#94a3b8,#334155);position:relative;color:#fff;align-items:end;font-size:11px;font-weight:600}
+.ph-img.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.85),rgba(15,23,42,0) 70%)} .ph-img.photo i{position:relative;z-index:1;font-style:normal;padding-bottom:5px}
+.ph-img.selected{border-color:var(--primary);box-shadow:0 0 0 2px var(--surface) inset}
+.toasts{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:14px}
+.toast{background:var(--toast-bg);color:var(--toast-fg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg)} .toast.err{background:var(--danger);color:var(--on-danger)}
+.tabbar{display:flex;padding:6px;background:var(--tabbar-bg);border-top:1px solid var(--border);box-shadow:var(--shadow-tabbar);backdrop-filter:blur(14px)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;font-size:11px;font-weight:600;color:var(--text-2);border-radius:12px}
+.tb svg{width:22px;height:22px} .tb.on{background:var(--primary-soft);color:var(--primary)}
+.sw{display:flex;height:10px} .sw i{flex:1}
+footer{margin-top:28px;font-size:13px;color:var(--muted)}
+</style></head>
+<body><main>
+<h1>Theme preview</h1>
+<p class="lede">Static sample of the five proposed INNODIGYM themes. Pick one below to re-skin this whole page, or compare the five panels side by side. Colours are the exact tokens from <code>docs/plan-themes.md</code>.</p>
+<fieldset class="pickers"><legend>Theme (picker mock-up, this is how the Profile screen could look)</legend>
+<label class="pick"><input type="radio" name="theme" value="auto"><span class="mini split"><span class="half" data-theme="default"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="half" data-theme="dark"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span></span><span class="pn">Auto</span><span class="pd">Follows your device</span></label><label class="pick"><input type="radio" name="theme" value="default" checked><span class="mini" data-theme="default"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="pn">Teal Classic</span><span class="pd">The current look: fresh teal with a lime spark</span></label><label class="pick"><input type="radio" name="theme" value="dark"><span class="mini" data-theme="dark"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="pn">Midnight</span><span class="pd">Deep navy-slate dark</span></label><label class="pick"><input type="radio" name="theme" value="ember"><span class="mini" data-theme="ember"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="pn">Ember</span><span class="pd">Warm and grounded: deep amber-brown on soft sand, golden spark</span></label><label class="pick"><input type="radio" name="theme" value="tide"><span class="mini" data-theme="tide"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="pn">Tide</span><span class="pd">Cool and calm: clear blue with a cyan edge</span></label><label class="pick"><input type="radio" name="theme" value="graphite"><span class="mini" data-theme="graphite"><i class="m-bar"></i><i class="m-card"><b></b><s></s></i></span><span class="pn">Graphite</span><span class="pd">High-contrast neutral: ink on paper, near-monochrome, AAA text</span></label>
+</fieldset>
+<h2 style="font-size:16px;margin:0 0 10px">Logo concept (from Minimal Functional Trainer App Icon.png)</h2>
+<div class="logos"><figure><span class="logo-tile" data-theme="default"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Teal Classic</figure><figure><span class="logo-tile" data-theme="dark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Midnight</figure><figure><span class="logo-tile" data-theme="ember"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Ember</figure><figure><span class="logo-tile" data-theme="tide"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Tide</figure><figure><span class="logo-tile" data-theme="graphite"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Graphite</figure><figure><span class="logo-tile" style="background:#fff;color:#111;box-shadow:var(--shadow)"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--x, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span>Mono on tile</figure></div>
+<section class="grid" aria-label="Theme samples">
+<article class="panel" data-theme="default" aria-label="Teal Classic">
+ <header class="ph"><h2>Teal Classic</h2><p>The current look: fresh teal with a lime spark. Unchanged.</p></header>
+ <div class="page">
+  <div class="brandrow"><span class="mark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span><div><b>INNODIGYM Power</b><small>Unofficial client</small></div></div>
+  <div class="card">
+   <h3>Your custom programs</h3>
+   <div class="row"><button class="btn">Save changes</button><button class="btn sec">Cancel</button><button class="btn dng">Delete</button><button class="btn" disabled>Disabled</button></div>
+   <div class="row chips"><span class="chip on">Strength</span><span class="chip">Mobility</span><span class="chip">Cardio</span><span class="chip foc">Focus</span></div>
+   <label class="fld">Nickname<input value="Dani" aria-label="Nickname"></label>
+   <label class="fld">Search<input placeholder="Search movements" aria-label="Search"></label>
+   <div class="row meta2"><span class="pill">Week 3</span><span class="pill off">Official</span><span class="meta">12 min &middot; 4 moves</span></div>
+   <div class="note">Plan covers 12 weeks. Edited days stay as you set them.</div>
+   <div class="note warn">2 days have no routine yet.</div>
+   <div class="note err">Could not reach the server. Try again.</div>
+   <div class="thumbs"><span class="ph-img white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span><span class="ph-img photo"><i>Exercise</i></span><span class="ph-img selected white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span></div>
+  </div>
+  <div class="toasts"><div class="toast">Saved.</div><div class="toast err">Delete failed.</div></div>
+ </div>
+ <nav class="tabbar" aria-label="Tab bar sample"><span class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Programs</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plans</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Actions</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</span></nav>
+ <div class="sw" aria-hidden="true"><i style="background:#f4f6fb" title="bg #f4f6fb"></i><i style="background:#ffffff" title="surface #ffffff"></i><i style="background:#f8fafc" title="surface_2 #f8fafc"></i><i style="background:#cbd5e1" title="border_strong #cbd5e1"></i><i style="background:#0f172a" title="text #0f172a"></i><i style="background:#5b6a80" title="muted #5b6a80"></i><i style="background:#0f766e" title="primary #0f766e"></i><i style="background:#e6f6f4" title="primary_soft #e6f6f4"></i><i style="background:#84cc16" title="accent #84cc16"></i><i style="background:#dc2626" title="danger #dc2626"></i><i style="background:#b45309" title="warn #b45309"></i><i style="background:#3730a3" title="chip_official_fg #3730a3"></i></div>
+</article><article class="panel" data-theme="dark" aria-label="Midnight">
+ <header class="ph"><h2>Midnight</h2><p>Deep navy-slate dark. Lighter surfaces = higher elevation, mint-teal accent, no pure black.</p></header>
+ <div class="page">
+  <div class="brandrow"><span class="mark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span><div><b>INNODIGYM Power</b><small>Unofficial client</small></div></div>
+  <div class="card">
+   <h3>Your custom programs</h3>
+   <div class="row"><button class="btn">Save changes</button><button class="btn sec">Cancel</button><button class="btn dng">Delete</button><button class="btn" disabled>Disabled</button></div>
+   <div class="row chips"><span class="chip on">Strength</span><span class="chip">Mobility</span><span class="chip">Cardio</span><span class="chip foc">Focus</span></div>
+   <label class="fld">Nickname<input value="Dani" aria-label="Nickname"></label>
+   <label class="fld">Search<input placeholder="Search movements" aria-label="Search"></label>
+   <div class="row meta2"><span class="pill">Week 3</span><span class="pill off">Official</span><span class="meta">12 min &middot; 4 moves</span></div>
+   <div class="note">Plan covers 12 weeks. Edited days stay as you set them.</div>
+   <div class="note warn">2 days have no routine yet.</div>
+   <div class="note err">Could not reach the server. Try again.</div>
+   <div class="thumbs"><span class="ph-img white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span><span class="ph-img photo"><i>Exercise</i></span><span class="ph-img selected white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span></div>
+  </div>
+  <div class="toasts"><div class="toast">Saved.</div><div class="toast err">Delete failed.</div></div>
+ </div>
+ <nav class="tabbar" aria-label="Tab bar sample"><span class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Programs</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plans</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Actions</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</span></nav>
+ <div class="sw" aria-hidden="true"><i style="background:#0e1523" title="bg #0e1523"></i><i style="background:#151e30" title="surface #151e30"></i><i style="background:#1c273b" title="surface_2 #1c273b"></i><i style="background:#3d4c66" title="border_strong #3d4c66"></i><i style="background:#e8edf6" title="text #e8edf6"></i><i style="background:#98a5bc" title="muted #98a5bc"></i><i style="background:#2dd4bf" title="primary #2dd4bf"></i><i style="background:#123a3d" title="primary_soft #123a3d"></i><i style="background:#a3e635" title="accent #a3e635"></i><i style="background:#f87171" title="danger #f87171"></i><i style="background:#fbbf24" title="warn #fbbf24"></i><i style="background:#c7d2fe" title="chip_official_fg #c7d2fe"></i></div>
+</article><article class="panel" data-theme="ember" aria-label="Ember">
+ <header class="ph"><h2>Ember</h2><p>Warm and grounded: deep amber-brown on soft sand, golden spark. Colour-blind-safe (status never relies on hue).</p></header>
+ <div class="page">
+  <div class="brandrow"><span class="mark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span><div><b>INNODIGYM Power</b><small>Unofficial client</small></div></div>
+  <div class="card">
+   <h3>Your custom programs</h3>
+   <div class="row"><button class="btn">Save changes</button><button class="btn sec">Cancel</button><button class="btn dng">Delete</button><button class="btn" disabled>Disabled</button></div>
+   <div class="row chips"><span class="chip on">Strength</span><span class="chip">Mobility</span><span class="chip">Cardio</span><span class="chip foc">Focus</span></div>
+   <label class="fld">Nickname<input value="Dani" aria-label="Nickname"></label>
+   <label class="fld">Search<input placeholder="Search movements" aria-label="Search"></label>
+   <div class="row meta2"><span class="pill">Week 3</span><span class="pill off">Official</span><span class="meta">12 min &middot; 4 moves</span></div>
+   <div class="note">Plan covers 12 weeks. Edited days stay as you set them.</div>
+   <div class="note warn">2 days have no routine yet.</div>
+   <div class="note err">Could not reach the server. Try again.</div>
+   <div class="thumbs"><span class="ph-img white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span><span class="ph-img photo"><i>Exercise</i></span><span class="ph-img selected white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span></div>
+  </div>
+  <div class="toasts"><div class="toast">Saved.</div><div class="toast err">Delete failed.</div></div>
+ </div>
+ <nav class="tabbar" aria-label="Tab bar sample"><span class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Programs</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plans</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Actions</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</span></nav>
+ <div class="sw" aria-hidden="true"><i style="background:#faf4ec" title="bg #faf4ec"></i><i style="background:#fffdf9" title="surface #fffdf9"></i><i style="background:#fbf5ec" title="surface_2 #fbf5ec"></i><i style="background:#d9c6aa" title="border_strong #d9c6aa"></i><i style="background:#2a1c11" title="text #2a1c11"></i><i style="background:#755f4c" title="muted #755f4c"></i><i style="background:#8a4a12" title="primary #8a4a12"></i><i style="background:#f7ebdc" title="primary_soft #f7ebdc"></i><i style="background:#f5b83d" title="accent #f5b83d"></i><i style="background:#be123c" title="danger #be123c"></i><i style="background:#6b5600" title="warn #6b5600"></i><i style="background:#6b21a8" title="chip_official_fg #6b21a8"></i></div>
+</article><article class="panel" data-theme="tide" aria-label="Tide">
+ <header class="ph"><h2>Tide</h2><p>Cool and calm: clear blue with a cyan edge. Clean, clinical, focused.</p></header>
+ <div class="page">
+  <div class="brandrow"><span class="mark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span><div><b>INNODIGYM Power</b><small>Unofficial client</small></div></div>
+  <div class="card">
+   <h3>Your custom programs</h3>
+   <div class="row"><button class="btn">Save changes</button><button class="btn sec">Cancel</button><button class="btn dng">Delete</button><button class="btn" disabled>Disabled</button></div>
+   <div class="row chips"><span class="chip on">Strength</span><span class="chip">Mobility</span><span class="chip">Cardio</span><span class="chip foc">Focus</span></div>
+   <label class="fld">Nickname<input value="Dani" aria-label="Nickname"></label>
+   <label class="fld">Search<input placeholder="Search movements" aria-label="Search"></label>
+   <div class="row meta2"><span class="pill">Week 3</span><span class="pill off">Official</span><span class="meta">12 min &middot; 4 moves</span></div>
+   <div class="note">Plan covers 12 weeks. Edited days stay as you set them.</div>
+   <div class="note warn">2 days have no routine yet.</div>
+   <div class="note err">Could not reach the server. Try again.</div>
+   <div class="thumbs"><span class="ph-img white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span><span class="ph-img photo"><i>Exercise</i></span><span class="ph-img selected white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span></div>
+  </div>
+  <div class="toasts"><div class="toast">Saved.</div><div class="toast err">Delete failed.</div></div>
+ </div>
+ <nav class="tabbar" aria-label="Tab bar sample"><span class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Programs</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plans</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Actions</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</span></nav>
+ <div class="sw" aria-hidden="true"><i style="background:#eef3fa" title="bg #eef3fa"></i><i style="background:#ffffff" title="surface #ffffff"></i><i style="background:#f5f8fd" title="surface_2 #f5f8fd"></i><i style="background:#bccbe0" title="border_strong #bccbe0"></i><i style="background:#0b1a33" title="text #0b1a33"></i><i style="background:#586982" title="muted #586982"></i><i style="background:#1d4ed8" title="primary #1d4ed8"></i><i style="background:#e4ecfd" title="primary_soft #e4ecfd"></i><i style="background:#06b6d4" title="accent #06b6d4"></i><i style="background:#c81e1e" title="danger #c81e1e"></i><i style="background:#b45309" title="warn #b45309"></i><i style="background:#5b21b6" title="chip_official_fg #5b21b6"></i></div>
+</article><article class="panel" data-theme="graphite" aria-label="Graphite">
+ <header class="ph"><h2>Graphite</h2><p>High-contrast neutral: ink on paper, near-monochrome, AAA text. Maximum legibility outdoors.</p></header>
+ <div class="page">
+  <div class="brandrow"><span class="mark"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <path d="M12 51V14.5q0-2.5 2.6-2.2l31.800 3.700q2.600.3 2.600 2.900V36"/> <rect x="9" y="20" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="45.500" y="22" width="6.500" height="6.500" rx="1.600" fill="currentColor" stroke="none"/> <rect x="24.500" y="15" width="12" height="25" rx="2" fill="currentColor" stroke="none"/> <path d="M12.200 27v9M9.600 45.500l2.600-9.500 2.600 9.500z" stroke-width="1.800"/> <circle cx="40" cy="31.500" r="4.300" fill="currentColor" stroke="none"/> <path d="M27 52c-1.500-8 .5-14 8-15 3.500-.4 6.500.8 8.500 3l7.500.3c2 .1 2 3 0 3.100L44.500 43.700C42.700 45 42 48 42 52z" fill="currentColor" stroke="none"/> <path d="M33.500 38.800c4.500-.8 8 1.200 9.200 4.700M30 52c-.5-4 0-7 2-9" stroke="var(--logo-cut, #fff)" stroke-width="1.300"/> <path d="M52 41.500l5.500-2" stroke-width="1.500"/> <path d="M57.500 36.500l5 2.200-2.800 4.300z" stroke-width="2"/> <path d="M8 59.500V53h11.500l6 6.500h31.500M29 52.500h28.500" stroke-width="2.800"/> </svg> </span><div><b>INNODIGYM Power</b><small>Unofficial client</small></div></div>
+  <div class="card">
+   <h3>Your custom programs</h3>
+   <div class="row"><button class="btn">Save changes</button><button class="btn sec">Cancel</button><button class="btn dng">Delete</button><button class="btn" disabled>Disabled</button></div>
+   <div class="row chips"><span class="chip on">Strength</span><span class="chip">Mobility</span><span class="chip">Cardio</span><span class="chip foc">Focus</span></div>
+   <label class="fld">Nickname<input value="Dani" aria-label="Nickname"></label>
+   <label class="fld">Search<input placeholder="Search movements" aria-label="Search"></label>
+   <div class="row meta2"><span class="pill">Week 3</span><span class="pill off">Official</span><span class="meta">12 min &middot; 4 moves</span></div>
+   <div class="note">Plan covers 12 weeks. Edited days stay as you set them.</div>
+   <div class="note warn">2 days have no routine yet.</div>
+   <div class="note err">Could not reach the server. Try again.</div>
+   <div class="thumbs"><span class="ph-img white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span><span class="ph-img photo"><i>Exercise</i></span><span class="ph-img selected white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span></div>
+  </div>
+  <div class="toasts"><div class="toast">Saved.</div><div class="toast err">Delete failed.</div></div>
+ </div>
+ <nav class="tabbar" aria-label="Tab bar sample"><span class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Programs</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plans</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Actions</span><span class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</span></nav>
+ <div class="sw" aria-hidden="true"><i style="background:#ececee" title="bg #ececee"></i><i style="background:#ffffff" title="surface #ffffff"></i><i style="background:#f4f4f5" title="surface_2 #f4f4f5"></i><i style="background:#71717a" title="border_strong #71717a"></i><i style="background:#09090b" title="text #09090b"></i><i style="background:#46464e" title="muted #46464e"></i><i style="background:#18181b" title="primary #18181b"></i><i style="background:#e4e4e7" title="primary_soft #e4e4e7"></i><i style="background:#a3e635" title="accent #a3e635"></i><i style="background:#b91c1c" title="danger #b91c1c"></i><i style="background:#92400e" title="warn #92400e"></i><i style="background:#1e1b4b" title="chip_official_fg #1e1b4b"></i></div>
+</article>
+</section>
+<footer>Self-contained file, no network requests. Photo tile and white tile show the dark-theme image treatment (brightness .9).</footer>
+</main>
+<script>
+(function(){
+  var mq=window.matchMedia('(prefers-color-scheme: dark)');
+  function apply(v){document.documentElement.setAttribute('data-theme',v==='auto'?(mq.matches?'dark':'default'):v);}
+  var radios=document.querySelectorAll('input[name=theme]');
+  radios.forEach(function(r){r.addEventListener('change',function(){apply(r.value)})});
+  mq.addEventListener&&mq.addEventListener('change',function(){var c=document.querySelector('input[name=theme]:checked');if(c)apply(c.value)});
+})();
+</script></body></html>

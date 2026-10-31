@@ -1,0 +1,24 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 2423,
+    "totalConsume": 726,
+    "totalCapacity": 143337,
+    "totalDistance": 0,
+    "dailyList": null,
+    "monthList": [
+      {
+        "yearMonth": "202610",
+        "totalDuration": 2423,
+        "totalConsume": 726,
+        "totalCapacity": 143337,
+        "totalDistance": 0
+      }
+    ]
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

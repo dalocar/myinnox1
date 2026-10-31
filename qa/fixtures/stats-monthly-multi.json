@@ -1,0 +1,45 @@
+{
+  "code": 200,
+  "msg": "OK",
+  "traceId": "fixture",
+  "data": {
+    "totalDuration": 7847,
+    "totalConsume": 1438,
+    "totalCapacity": 228937,
+    "totalDistance": 0,
+    "dailyList": null,
+    "monthList": [
+      {
+        "yearMonth": "202412",
+        "totalDuration": 678,
+        "totalConsume": 89,
+        "totalCapacity": 10700,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202510",
+        "totalDuration": 2034,
+        "totalConsume": 267,
+        "totalCapacity": 32100,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202511",
+        "totalDuration": 2712,
+        "totalConsume": 356,
+        "totalCapacity": 42800,
+        "totalDistance": 0
+      },
+      {
+        "yearMonth": "202610",
+        "totalDuration": 2423,
+        "totalConsume": 726,
+        "totalCapacity": 143337,
+        "totalDistance": 0
+      }
+    ]
+  },
+  "error": false,
+  "success": true,
+  "warn": false
+}

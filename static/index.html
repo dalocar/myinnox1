@@ -243,6 +243,15 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
           <div class="ca-chips" id="ca-count"></div>
         </fieldset>
         <fieldset id="ca-weight-set"><legend>Weight mode</legend><div class="ca-chips" id="ca-weight"></div></fieldset>
+        <fieldset class="ca-pic">
+          <legend>Picture</legend>
+          <img id="ca-pic-preview" class="ca-pic-preview" alt="" hidden>
+          <div class="ca-pic-actions">
+            <button type="button" id="ca-pic-btn" class="secondary">Choose image</button>
+            <button type="button" id="ca-pic-clear" class="secondary" hidden>Remove picture</button>
+          </div>
+          <input type="file" id="ca-pic-input" accept="image/jpeg,image/png" hidden>
+        </fieldset>
         <div class="ca-actions"><button type="submit" id="ca-submit">Add</button><button type="button" id="ca-cancel" class="secondary" hidden>Cancel</button></div>
       </form>
       <p id="action-add-status"></p>

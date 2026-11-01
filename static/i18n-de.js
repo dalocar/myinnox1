@@ -161,6 +161,13 @@
     "Adding…": "Wird hinzugefügt…",
     "Added (id {id}).": "Hinzugefügt (ID {id}).",
     "Action added.": "Übung hinzugefügt.",
+    "Picture": "Bild",
+    "Choose image": "Bild wählen",
+    "Remove picture": "Bild entfernen",
+    "Uploading…": "Wird hochgeladen…",
+    "Upload failed: {msg}": "Upload fehlgeschlagen: {msg}",
+    "Choose a JPEG or PNG image.": "Wähle ein JPEG- oder PNG-Bild.",
+    "Wait for the picture to finish uploading.": "Warte, bis das Bild hochgeladen ist.",
     "Add failed: {msg}": "Hinzufügen fehlgeschlagen: {msg}",
 
     "No workout records in the last 180 days.": "Keine Trainingseinträge in den letzten 180 Tagen.",

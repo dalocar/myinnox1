@@ -9,7 +9,8 @@
      "Timer-based" once Bodyweight-only is chosen.
    Confirmed by reading back a created action: name, muscleParts, level, actionType, countType
    and sideNum are accepted by POST /action/add under exactly these names. Bodyweight -> sideNum 0
-   is inferred from the library (a bodyweight create could not be captured: the app wants an image). */
+   is inferred from the library (a bodyweight create could not be captured: the app wants an image).
+   Pictures are uploaded first (see UPLOAD below) and the returned URL is sent as picUrl. */
 (function (root) {
   "use strict";
   const LEVELS = [
@@ -74,7 +75,40 @@
       bodyweight: d.bodyweight, timer: d.timer, combined: d.combined };
   }
 
-  const api = { LEVELS, TYPES, COUNT, SIDE, buildBody, validate, describe, toForm };
+  // ---- Picture upload: POST /api/file/upload (multipart), captured from the official app ----
+  // Parts: `usage` (REQUIRED; 6 = action picture, without it upstream answers an opaque 500),
+  // `extraParam` ("0", optional: only adds the "_0" suffix to the stored name) and `file`
+  // (any filename; image/jpeg and the app's image/jpg both work). Response `data` is the hosted URL,
+  // which goes into `picUrl` of /action/add.
+  const UPLOAD = { USAGE_ACTION_PIC: 6, MAX_EDGE: 1024, TYPES: ["image/jpeg", "image/png"] };
+
+  function uploadFields() {
+    return { usage: String(UPLOAD.USAGE_ACTION_PIC), extraParam: "0" };
+  }
+
+  // file: {type, size} -> null when fine, else an English i18n key.
+  function validateImage(file) {
+    if (!file || !UPLOAD.TYPES.includes(String(file.type).toLowerCase()) || !(file.size > 0)) return "Choose a JPEG or PNG image.";
+    return null;
+  }
+
+  // Fit inside a max x max box, never upscale. -> {width, height, scaled}
+  function fitSize(w, h, max) {
+    const m = max || UPLOAD.MAX_EDGE;
+    const W = Math.max(1, Math.round(Number(w) || 0)), H = Math.max(1, Math.round(Number(h) || 0));
+    if (W <= m && H <= m) return { width: W, height: H, scaled: false };
+    const k = m / Math.max(W, H);
+    return { width: Math.max(1, Math.round(W * k)), height: Math.max(1, Math.round(H * k)), scaled: true };
+  }
+
+  // Upload response -> hosted URL; throws when upstream gave none.
+  function uploadUrl(res) {
+    const u = res && res.data;
+    if (typeof u !== "string" || !/^https?:\/\//.test(u)) throw new Error("Upload returned no image URL");
+    return u;
+  }
+
+  const api = { LEVELS, TYPES, COUNT, SIDE, UPLOAD, buildBody, validate, describe, toForm, uploadFields, validateImage, fitSize, uploadUrl };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.CustomActionCore = api;
 })(typeof window !== "undefined" ? window : globalThis);

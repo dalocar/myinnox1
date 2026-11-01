@@ -162,6 +162,13 @@
     "Adding…": "添加中…",
     "Added (id {id}).": "已添加（id {id}）。",
     "Action added.": "动作已添加。",
+    "Picture": "图片",
+    "Choose image": "选择图片",
+    "Remove picture": "移除图片",
+    "Uploading…": "上传中…",
+    "Upload failed: {msg}": "上传失败：{msg}",
+    "Choose a JPEG or PNG image.": "请选择 JPEG 或 PNG 图片。",
+    "Wait for the picture to finish uploading.": "请等待图片上传完成。",
     "Add failed: {msg}": "添加失败：{msg}",
 
     "No workout records in the last 180 days.": "最近 180 天没有训练记录。",

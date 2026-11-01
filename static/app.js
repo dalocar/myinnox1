@@ -34,8 +34,10 @@ function toast(msg, isErr) {
 
 async function api(path, opts = {}) {
   const token = store.get(TOKEN_KEY);
+  // FormData must go without a Content-Type so the browser adds the multipart boundary.
+  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
   const headers = Object.assign(
-    { "Content-Type": "application/json" },
+    isForm ? {} : { "Content-Type": "application/json" },
     opts.headers || {},
     token ? { Authorization: "Bearer " + token } : {}
   );
@@ -818,7 +820,9 @@ async function deleteAction(id) {
 }
 
 // Create form state. Codes are documented in custom-action-core.js.
-const caForm = { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false };
+// picUrl is only a NEW upload; the stored image of an action being edited is kept upstream when picUrl is omitted.
+const caForm = { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false, picUrl: "" };
+let caExistingPic = "";
 
 function customActionTags(a) {
   const d = CustomActionCore.describe(a);
@@ -870,32 +874,103 @@ I18N.onChange.push(renderCaChips);
 
 function resetCaForm() {
   $("action-add-form").reset();
-  Object.assign(caForm, { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false });
+  Object.assign(caForm, { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false, picUrl: "" });
+  caExistingPic = "";
   $("ca-heading").textContent = t("Add a custom action");
   $("ca-submit").textContent = t("Add");
   $("ca-cancel").hidden = true;
   renderCaChips();
+  renderCaPic();
 }
 
 // Edit loads the stored action into the create form; saving posts /action/add with its id (update in place).
 function startEditAction(a) {
   const f = CustomActionCore.toForm(a);
-  Object.assign(caForm, { id: f.id, parts: new Set(f.parts), level: f.level, actionType: f.actionType, bodyweight: f.bodyweight, timer: f.timer, combined: f.combined });
+  Object.assign(caForm, { id: f.id, parts: new Set(f.parts), level: f.level, actionType: f.actionType, bodyweight: f.bodyweight, timer: f.timer, combined: f.combined, picUrl: "" });
+  caExistingPic = a.picUrl || "";
   $("new-action-name").value = f.name;
   $("ca-heading").textContent = t("Edit action");
   $("ca-submit").textContent = t("Save changes");
   $("ca-cancel").hidden = false;
   $("action-add-status").textContent = "";
   renderCaChips();
+  renderCaPic();
   $("action-add-form").scrollIntoView({ block: "start", behavior: "smooth" });
   $("new-action-name").focus();
 }
 $("ca-cancel").onclick = resetCaForm;
 
+// Picture: shrink in the browser (the official app crops to a small JPEG), upload through the proxy,
+// keep the hosted URL in caForm.picUrl. Wire format is documented in custom-action-core.js.
+let caUploading = false;
+
+function renderCaPic() {
+  const shown = caForm.picUrl || caExistingPic;
+  const img = $("ca-pic-preview");
+  img.hidden = !shown;
+  if (shown) img.src = shown; else img.removeAttribute("src");
+  $("ca-pic-clear").hidden = !caForm.picUrl || caUploading; // removes a new upload, not the stored picture
+  $("ca-pic-btn").disabled = caUploading;
+}
+
+async function shrinkImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, fail) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => fail(new Error(t("Choose a JPEG or PNG image.")));
+      i.src = url;
+    });
+    const { width, height } = CustomActionCore.fitSize(img.naturalWidth, img.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; // PNG transparency would turn black in a JPEG
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise((ok) => canvas.toBlob(ok, "image/jpeg", 0.88));
+    if (!blob) throw new Error(t("Choose a JPEG or PNG image."));
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+$("ca-pic-btn").addEventListener("click", () => $("ca-pic-input").click());
+$("ca-pic-clear").addEventListener("click", () => { caForm.picUrl = ""; renderCaPic(); });
+$("ca-pic-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const status = $("action-add-status");
+  const bad = CustomActionCore.validateImage(file);
+  if (bad) { status.textContent = t(bad); return; }
+  caUploading = true;
+  renderCaPic();
+  status.textContent = t("Uploading…");
+  try {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(CustomActionCore.uploadFields())) fd.append(k, v);
+    fd.append("file", await shrinkImage(file), "action.jpg");
+    caForm.picUrl = CustomActionCore.uploadUrl(await api("/file/upload", { method: "POST", body: fd }));
+    status.textContent = "";
+  } catch (err) {
+    status.textContent = t("Upload failed: {msg}", { msg: err.message });
+    toast(t("Upload failed: {msg}", { msg: err.message }), true);
+  } finally {
+    caUploading = false;
+    renderCaPic();
+  }
+});
+renderCaPic();
+
 $("action-add-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = $("action-add-status");
   const form = { name: $("new-action-name").value, ...caForm, parts: Array.from(caForm.parts) };
+  if (caUploading) { status.textContent = t("Wait for the picture to finish uploading."); return; }
   const bad = CustomActionCore.validate(form);
   if (bad) { status.textContent = t(bad); return; }
   const body = CustomActionCore.buildBody(form);

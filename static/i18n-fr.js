@@ -160,6 +160,13 @@
     "Adding…": "Ajout en cours…",
     "Added (id {id}).": "Ajouté (id {id}).",
     "Action added.": "Exercice ajouté.",
+    "Picture": "Image",
+    "Choose image": "Choisir une image",
+    "Remove picture": "Retirer l’image",
+    "Uploading…": "Envoi en cours…",
+    "Upload failed: {msg}": "Échec de l’envoi : {msg}",
+    "Choose a JPEG or PNG image.": "Choisissez une image JPEG ou PNG.",
+    "Wait for the picture to finish uploading.": "Attendez la fin de l’envoi de l’image.",
     "Add failed: {msg}": "Échec de l’ajout : {msg}",
 
     "No workout records in the last 180 days.": "Aucune séance enregistrée au cours des 180 derniers jours.",

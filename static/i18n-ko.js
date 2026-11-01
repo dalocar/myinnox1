@@ -162,6 +162,13 @@
     "Adding…": "추가 중…",
     "Added (id {id}).": "추가됨 (id {id}).",
     "Action added.": "운동이 추가되었습니다.",
+    "Picture": "사진",
+    "Choose image": "사진 선택",
+    "Remove picture": "사진 삭제",
+    "Uploading…": "업로드 중…",
+    "Upload failed: {msg}": "업로드 실패: {msg}",
+    "Choose a JPEG or PNG image.": "JPEG 또는 PNG 이미지를 선택하세요.",
+    "Wait for the picture to finish uploading.": "사진 업로드가 끝날 때까지 기다려 주세요.",
     "Add failed: {msg}": "추가 실패: {msg}",
 
     "No workout records in the last 180 days.": "최근 180일 동안 운동 기록이 없습니다.",

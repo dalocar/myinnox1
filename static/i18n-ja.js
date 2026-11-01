@@ -162,6 +162,13 @@
     "Adding…": "追加中…",
     "Added (id {id}).": "追加しました (id {id})。",
     "Action added.": "種目を追加しました。",
+    "Picture": "画像",
+    "Choose image": "画像を選択",
+    "Remove picture": "画像を削除",
+    "Uploading…": "アップロード中…",
+    "Upload failed: {msg}": "アップロードに失敗しました: {msg}",
+    "Choose a JPEG or PNG image.": "JPEG または PNG の画像を選択してください。",
+    "Wait for the picture to finish uploading.": "画像のアップロードが完了するまでお待ちください。",
     "Add failed: {msg}": "追加に失敗しました: {msg}",
 
     "No workout records in the last 180 days.": "過去180日間のトレーニング記録はありません。",

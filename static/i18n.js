@@ -176,6 +176,13 @@
     "Adding…": "Añadiendo…",
     "Added (id {id}).": "Añadido (id {id}).",
     "Action added.": "Ejercicio añadido.",
+    "Picture": "Imagen",
+    "Choose image": "Elegir imagen",
+    "Remove picture": "Quitar imagen",
+    "Uploading…": "Subiendo…",
+    "Upload failed: {msg}": "Error al subir: {msg}",
+    "Choose a JPEG or PNG image.": "Elige una imagen JPEG o PNG.",
+    "Wait for the picture to finish uploading.": "Espera a que termine de subirse la imagen.",
     "Add failed: {msg}": "Error al añadir: {msg}",
 
     // ----- history / fitness -----

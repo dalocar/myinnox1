@@ -53,3 +53,29 @@ test("edit: toForm -> buildBody round-trips and carries the id", () => {
   const bw = C.toForm({ id: 5, name: "x", muscleParts: "1", level: 1, actionType: 2, countType: 2, sideNum: 0 });
   assert.equal(C.buildBody(bw).sideNum, 0);
 });
+
+test("uploadFields: usage 6 is required, extraParam 0 (captured from the official app)", () => {
+  assert.deepEqual(C.uploadFields(), { usage: "6", extraParam: "0" });
+});
+
+test("validateImage: JPEG/PNG only, non-empty", () => {
+  assert.equal(C.validateImage({ type: "image/jpeg", size: 10 }), null);
+  assert.equal(C.validateImage({ type: "image/PNG", size: 10 }), null);
+  assert.equal(C.validateImage({ type: "image/gif", size: 10 }), "Choose a JPEG or PNG image.");
+  assert.equal(C.validateImage({ type: "image/jpeg", size: 0 }), "Choose a JPEG or PNG image.");
+  assert.equal(C.validateImage(null), "Choose a JPEG or PNG image.");
+});
+
+test("fitSize: shrinks to the max edge, keeps aspect, never upscales", () => {
+  assert.deepEqual(C.fitSize(4000, 3000), { width: 1024, height: 768, scaled: true });
+  assert.deepEqual(C.fitSize(600, 3000, 1000), { width: 200, height: 1000, scaled: true });
+  assert.deepEqual(C.fitSize(300, 200), { width: 300, height: 200, scaled: false });
+  assert.deepEqual(C.fitSize(0, 0), { width: 1, height: 1, scaled: false });
+});
+
+test("uploadUrl: returns the hosted URL or throws", () => {
+  const u = "https://power.renhesports.com/filestore/power/action-pic/1_0.jpg";
+  assert.equal(C.uploadUrl({ code: 200, data: u }), u);
+  assert.throws(() => C.uploadUrl({ data: null }));
+  assert.throws(() => C.uploadUrl(undefined));
+});

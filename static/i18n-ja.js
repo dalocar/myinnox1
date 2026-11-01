@@ -324,6 +324,8 @@
     "Warm-up": "ウォームアップ",
     "Strength": "筋力",
     "Part {n}": "部位 {n}",
+    "Kept on save, edit in the official app. {list}": "保存時に保持されます。公式アプリで編集してください。{list}",
+    "Custom": "カスタム",
     "Part": "部位",
     "Attributes": "属性",
     "Equipment-based": "器具あり",

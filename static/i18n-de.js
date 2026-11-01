@@ -322,6 +322,8 @@
     "Warm-up": "Aufwärmen",
     "Strength": "Kraft",
     "Part {n}": "Teil {n}",
+    "Kept on save, edit in the official app. {list}": "Bleiben beim Speichern erhalten; in der offiziellen App bearbeiten. {list}",
+    "Custom": "Eigene",
     "Part": "Teil",
     "Attributes": "Eigenschaften",
     "Equipment-based": "Mit Gerät",

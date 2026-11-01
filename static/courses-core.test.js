@@ -44,6 +44,11 @@ test("countActive", () => {
   assert.equal(C.countPanelActive({ topics: ["1"], levels: ["1"], maxDuration: 10 }), 2);
 });
 
+test("stepsOf includes warm-up and stretch steps in order, tagged by stage", () => {
+  const s = C.stepsOf({ relaxStepList: [{ actionName: "C" }], mainStepList: [{ actionName: "B" }], warmUpStepList: [{ actionName: "A" }] });
+  assert.deepEqual(s.map((x) => [x.name, x.stage]), [["A", "warmup"], ["B", "main"], ["C", "stretch"]]);
+});
+
 test("stepsOf maps mainStepList", () => {
   const s = C.stepsOf({ mainStepList: [{ actionName: "Squat", picUrl: "p", count: 12, groupNum: 3 }, { name: "x" }] });
   assert.deepEqual(s[0], { name: "Squat", picUrl: "p", videoUrl: "", reps: 12, sets: 3, stage: "main" });

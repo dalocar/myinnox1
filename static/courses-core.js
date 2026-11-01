@@ -72,13 +72,15 @@
   }
 
   // Normalised steps of /course/detail for the read-only modal.
+  // Official programs keep warm-up (stage 1) and stretch (stage 3) steps in their own lists;
+  // custom actions of type Warm-up / Stretch land there too. Order: warm-up, main, stretch.
   function stepsOf(detail) {
     const d = detail || {};
     const pick = (arr, stage) => (Array.isArray(arr) ? arr : []).map((s) => ({
       name: s.actionName || s.name || "", picUrl: s.picUrl || "", videoUrl: s.videoUrl || "",
       reps: s.count == null ? null : Number(s.count), sets: s.groupNum == null ? null : Number(s.groupNum), stage,
     }));
-    return pick(d.mainStepList, "main");
+    return [...pick(d.warmUpStepList, "warmup"), ...pick(d.mainStepList, "main"), ...pick(d.relaxStepList, "stretch")];
   }
 
   return {

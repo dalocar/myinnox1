@@ -323,6 +323,8 @@
     "Warm-up": "热身",
     "Strength": "力量",
     "Part {n}": "部位 {n}",
+    "Kept on save, edit in the official app. {list}": "保存时会保留，请在官方应用中编辑。{list}",
+    "Custom": "自定义",
     "Part": "部位",
     "Attributes": "属性",
     "Equipment-based": "器械训练",

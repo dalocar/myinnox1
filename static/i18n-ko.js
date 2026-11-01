@@ -323,6 +323,8 @@
     "Warm-up": "워밍업",
     "Strength": "근력",
     "Part {n}": "부위 {n}",
+    "Kept on save, edit in the official app. {list}": "저장 시 유지됩니다. 공식 앱에서 편집하세요. {list}",
+    "Custom": "사용자 지정",
     "Part": "부위",
     "Attributes": "속성",
     "Equipment-based": "기구 사용",

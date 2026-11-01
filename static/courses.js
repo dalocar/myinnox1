@@ -241,7 +241,7 @@
       if (!steps.length) html += `<p class="empty-state">${escapeHtml(t("No exercises listed."))}</p>`;
       else html += `<ul class="cs-steps">${steps.map((s, i) => `<li class="cs-step">${
         s.picUrl ? `<img src="${escapeHtml(s.picUrl)}" alt="" loading="lazy" data-i="${i}">` : `<span class="cs-step-ph">${DUMBBELL}</span>`
-      }<div><div>${escapeHtml(s.name)}</div>${s.reps != null || s.sets != null ? `<div class="meta">${escapeHtml(t("{sets} × {reps} reps", { sets: s.sets ?? 1, reps: s.reps ?? "?" }))}</div>` : ""}</div></li>`).join("")}</ul>`;
+      }<div><div>${escapeHtml(s.name)}</div>${s.stage !== "main" ? `<div class="meta">${escapeHtml(t(s.stage === "warmup" ? "Warm up" : "Stretch"))}</div>` : ""}${s.reps != null || s.sets != null ? `<div class="meta">${escapeHtml(t("{sets} × {reps} reps", { sets: s.sets ?? 1, reps: s.reps ?? "?" }))}</div>` : ""}</div></li>`).join("")}</ul>`;
       body.innerHTML = html;
       body.querySelectorAll("img[data-i]").forEach((im) => im.addEventListener("click", () => {
         const s = steps[Number(im.dataset.i)];

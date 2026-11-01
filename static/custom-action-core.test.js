@@ -42,3 +42,14 @@ test("describe round-trips the two real custom actions", () => {
   assert.equal(C.describe({ sideNum: 0, countType: 2 }).bodyweight, true);
   assert.deepEqual(C.describe(null).parts, []);
 });
+
+test("edit: toForm -> buildBody round-trips and carries the id", () => {
+  const stored = { id: 2290, name: "Custom - Per side", muscleParts: "4,6", level: 2, actionType: 1, countType: 2, sideNum: 2 };
+  const form = C.toForm(stored);
+  assert.deepEqual(C.buildBody(form), {
+    id: 2290, name: "Custom - Per side", muscleParts: "4,6", level: 2, actionType: 1, countType: 2, sideNum: 2, consume: 0,
+  });
+  assert.equal("id" in C.buildBody(base), false);
+  const bw = C.toForm({ id: 5, name: "x", muscleParts: "1", level: 1, actionType: 2, countType: 2, sideNum: 0 });
+  assert.equal(C.buildBody(bw).sideNum, 0);
+});

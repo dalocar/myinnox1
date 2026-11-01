@@ -789,9 +789,13 @@ async function loadActions() {
           <img class="thumb" src="${escapeHtml(a.picUrl || "")}" alt="">
           <div><div class="name">${escapeHtml(a.name)}</div><div class="meta">id ${a.id}</div><div class="ca-tags">${customActionTags(a).map((x) => `<span>${escapeHtml(x)}</span>`).join("")}</div></div>
         </div>
-        <button class="secondary" data-id="${a.id}">${t("Delete")}</button>
+        <div class="card-actions">
+          <button class="secondary" data-edit="${a.id}">${t("Edit")}</button>
+          <button class="secondary" data-id="${a.id}">${t("Delete")}</button>
+        </div>
       `;
-      el.querySelector("button").onclick = () => deleteAction(a.id);
+      el.querySelector("[data-edit]").onclick = () => startEditAction(a);
+      el.querySelector("[data-id]").onclick = () => deleteAction(a.id);
       el.querySelector("img.thumb").addEventListener("click", () => openLightbox(a.picUrl, a.videoUrl, a.name));
       list.appendChild(el);
     }
@@ -805,6 +809,7 @@ async function deleteAction(id) {
   try {
     await api(`/action/delete/${id}`, { method: "POST" });
     toast(t("Deleted."));
+    if (caForm.id === id) resetCaForm();
     invalidateActionCaches();
     loadActions();
   } catch (e) {
@@ -813,7 +818,7 @@ async function deleteAction(id) {
 }
 
 // Create form state. Codes are documented in custom-action-core.js.
-const caForm = { parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false };
+const caForm = { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false };
 
 function customActionTags(a) {
   const d = CustomActionCore.describe(a);
@@ -863,6 +868,30 @@ function renderCaChips() {
 renderCaChips();
 I18N.onChange.push(renderCaChips);
 
+function resetCaForm() {
+  $("action-add-form").reset();
+  Object.assign(caForm, { id: null, parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false });
+  $("ca-heading").textContent = t("Add a custom action");
+  $("ca-submit").textContent = t("Add");
+  $("ca-cancel").hidden = true;
+  renderCaChips();
+}
+
+// Edit loads the stored action into the create form; saving posts /action/add with its id (update in place).
+function startEditAction(a) {
+  const f = CustomActionCore.toForm(a);
+  Object.assign(caForm, { id: f.id, parts: new Set(f.parts), level: f.level, actionType: f.actionType, bodyweight: f.bodyweight, timer: f.timer, combined: f.combined });
+  $("new-action-name").value = f.name;
+  $("ca-heading").textContent = t("Edit action");
+  $("ca-submit").textContent = t("Save changes");
+  $("ca-cancel").hidden = false;
+  $("action-add-status").textContent = "";
+  renderCaChips();
+  $("action-add-form").scrollIntoView({ block: "start", behavior: "smooth" });
+  $("new-action-name").focus();
+}
+$("ca-cancel").onclick = resetCaForm;
+
 $("action-add-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = $("action-add-status");
@@ -870,19 +899,18 @@ $("action-add-form").addEventListener("submit", async (e) => {
   const bad = CustomActionCore.validate(form);
   if (bad) { status.textContent = t(bad); return; }
   const body = CustomActionCore.buildBody(form);
-  status.textContent = t("Adding…");
+  const editing = !!caForm.id;
+  status.textContent = editing ? t("Saving…") : t("Adding…");
   try {
     const res = await api("/action/add", { method: "POST", body: JSON.stringify(body) });
-    status.textContent = t("Added (id {id}).", { id: res.data });
-    toast(t("Action added."));
-    $("action-add-form").reset();
-    Object.assign(caForm, { parts: new Set(), level: 1, actionType: 3, bodyweight: false, timer: false, combined: false });
-    renderCaChips();
-    invalidateActionCaches(); // so the new action shows up in the picker too
+    status.textContent = editing ? t("Saved.") : t("Added (id {id}).", { id: res.data });
+    toast(editing ? t("Action updated.") : t("Action added."));
+    resetCaForm();
+    invalidateActionCaches(); // so the picker shows the new/updated action
     loadActions();
   } catch (e) {
     status.textContent = t("Failed: {msg}", { msg: e.message });
-    toast(t("Add failed: {msg}", { msg: e.message }), true);
+    toast(t(editing ? "Update failed: {msg}" : "Add failed: {msg}", { msg: e.message }), true);
   }
 });
 

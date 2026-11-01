@@ -1069,3 +1069,5 @@ input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow:
 .ca-chips .chip { min-height: 40px; }
 .ca-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .ca-tags span { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+
+.ca-actions { display: flex; gap: 10px; }

@@ -232,7 +232,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
       </div>
       <div id="actions-list"></div>
 
-      <h3>Add a custom action</h3>
+      <h3 id="ca-heading">Add a custom action</h3>
       <form id="action-add-form" class="ca-form">
         <label>Name <input type="text" id="new-action-name" required></label>
         <fieldset><legend>Part</legend><div class="ca-chips" id="ca-parts" data-multi="1"></div></fieldset>
@@ -243,7 +243,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
           <div class="ca-chips" id="ca-count"></div>
         </fieldset>
         <fieldset id="ca-weight-set"><legend>Weight mode</legend><div class="ca-chips" id="ca-weight"></div></fieldset>
-        <div><button type="submit">Add</button></div>
+        <div class="ca-actions"><button type="submit" id="ca-submit">Add</button><button type="button" id="ca-cancel" class="secondary" hidden>Cancel</button></div>
       </form>
       <p id="action-add-status"></p>
       </div>

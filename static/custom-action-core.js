@@ -40,6 +40,8 @@
       consume: 0,
     };
     if (f.picUrl) body.picUrl = String(f.picUrl);
+    // POST /action/add with an id updates that action in place (same id and actionNo; the stored image is kept).
+    if (f.id) body.id = Number(f.id);
     return body;
   }
 
@@ -65,7 +67,14 @@
     };
   }
 
-  const api = { LEVELS, TYPES, COUNT, SIDE, buildBody, validate, describe };
+  // Stored action -> form state, to edit it.
+  function toForm(a) {
+    const d = describe(a);
+    return { id: a && a.id, name: (a && a.name) || "", parts: d.parts, level: d.level || 1, actionType: d.actionType || 3,
+      bodyweight: d.bodyweight, timer: d.timer, combined: d.combined };
+  }
+
+  const api = { LEVELS, TYPES, COUNT, SIDE, buildBody, validate, describe, toForm };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.CustomActionCore = api;
 })(typeof window !== "undefined" ? window : globalThis);

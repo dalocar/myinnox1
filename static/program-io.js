@@ -67,7 +67,7 @@
     if (routines && K.MESSAGES[e.code]) return routineMessage(e);
     const list = LIST_LABEL[e.list] ? t(LIST_LABEL[e.list]) : "";
     switch (e.code) {
-      case "no-json": case "too-many-routines": case "no-routines": case "library-unavailable": return routineMessage(e);
+      case "no-json": case "invalid-json": case "too-many-routines": case "no-routines": case "library-unavailable": return routineMessage(e);
       case "bad-json": return t("That file is not valid JSON.");
       case "wrong-format": return t("That is not a MyInnoX1 program file.");
       case "newer-version": return t("This file was made by a newer version of MyInnoX1 (format {v}).", { v: e.version });
@@ -243,18 +243,18 @@
     const body = $("pio-modal-body");
     body.innerHTML = `
       <p class="meta">${escapeHtml(t("Programs exported from MyInnoX1, or routines written by an AI."))}</p>
-      <div class="pl-seg pio-tabs" role="group" aria-label="${escapeHtml(t("Import source"))}">
-        <button type="button" id="pio-tab-file-btn" aria-pressed="true">${escapeHtml(t("File"))}</button>
-        <button type="button" id="pio-tab-paste-btn" aria-pressed="false">${escapeHtml(t("Paste JSON"))}</button>
+      <div class="pl-seg pio-tabs" role="tablist" aria-label="${escapeHtml(t("Import source"))}">
+        <button type="button" role="tab" id="pio-tab-file-btn" aria-selected="true" aria-controls="pio-pane-file" tabindex="0">${escapeHtml(t("File"))}</button>
+        <button type="button" role="tab" id="pio-tab-paste-btn" aria-selected="false" aria-controls="pio-pane-paste" tabindex="-1">${escapeHtml(t("Paste JSON"))}</button>
       </div>
-      <div id="pio-pane-file" class="pio-pane">
+      <div id="pio-pane-file" class="pio-pane" role="tabpanel" aria-labelledby="pio-tab-file-btn">
         <p class="meta">${escapeHtml(t("Choose a .json file."))}</p>
         <div class="actions pio-actions">
           <button type="button" id="pio-choose">${escapeHtml(t("Choose file"))}</button>
           <button type="button" class="secondary" id="pio-file-cancel">${escapeHtml(t("Cancel"))}</button>
         </div>
       </div>
-      <div id="pio-pane-paste" class="pio-pane" hidden>
+      <div id="pio-pane-paste" class="pio-pane" role="tabpanel" aria-labelledby="pio-tab-paste-btn" hidden>
         <label for="pio-paste">${escapeHtml(t("Paste the answer of your AI (or a program file) here."))}</label>
         <textarea id="pio-paste" rows="9" spellcheck="false" autocomplete="off" placeholder='{ "format": "myinnox1-routines", ... }'></textarea>
         <p id="pio-paste-err" class="server-error" role="alert" hidden></p>
@@ -265,15 +265,26 @@
           <button type="button" class="secondary" id="pio-paste-cancel">${escapeHtml(t("Cancel"))}</button>
         </div>
       </div>`;
-    const tab = (which) => {
+    const tab = (which, focusPane = true) => {
       for (const k of ["file", "paste"]) {
-        $(`pio-tab-${k}-btn`).setAttribute("aria-pressed", String(k === which));
+        const b = $(`pio-tab-${k}-btn`);
+        b.setAttribute("aria-selected", String(k === which));
+        b.tabIndex = k === which ? 0 : -1;
         $(`pio-pane-${k}`).hidden = k !== which;
       }
-      (which === "paste" ? $("pio-paste") : $("pio-choose")).focus();
+      if (focusPane) (which === "paste" ? $("pio-paste") : $("pio-choose")).focus();
     };
     $("pio-tab-file-btn").onclick = () => tab("file");
     $("pio-tab-paste-btn").onclick = () => tab("paste");
+    // Arrow keys / Home / End move between the two tabs (selection follows focus).
+    $("pio-tab-file-btn").parentElement.addEventListener("keydown", (e) => {
+      const order = ["file", "paste"], cur = $("pio-tab-paste-btn").getAttribute("aria-selected") === "true" ? 1 : 0;
+      let next = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") next = 1 - cur;
+      else if (e.key === "Home") next = 0; else if (e.key === "End") next = 1;
+      if (next === null) return;
+      e.preventDefault(); tab(order[next], false); $(`pio-tab-${order[next]}-btn`).focus();
+    });
     $("pio-choose").onclick = () => fileInput.click();
     $("pio-file-cancel").onclick = () => closeModal();
     $("pio-paste-cancel").onclick = () => closeModal();

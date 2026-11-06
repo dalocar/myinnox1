@@ -25,3 +25,18 @@ Issue #10, branch `ai-routines-v1`. Design: `docs/plan-ai-export.md`.
 - Paste tab accepts fences and chatter (`extractJson` = first parseable `{...}`, preferring one with a `format` key). File import stays strict.
 - Fatal errors in the paste tab are shown inline (text is kept) with Copy errors for AI.
 - Pre-existing quirk noticed: `getActionLibrary()` caches an empty list if the first fetch returns no data.
+
+## Round-1 QA changes
+- Malformed JSON: `findJson` reports "JSON found but invalid" (`invalid-json`, with the parser message and a hint) instead of "no JSON" or a misleading wrong-format. A nested object is only used when it has a `format` key. Still rejects, never repairs (trailing commas, comments, curly quotes).
+- `findJson` has a work budget proportional to the text length (no quadratic scans on unbalanced braces).
+- The prompt's numeric rules and caps are built from `LIMITS`; tests check the prompt text and the parser boundaries against `LIMITS`.
+- Routine name max 60 and description max 300 characters (the program editor has no limit; these are provisional like the other caps).
+- Import dialog: tablist semantics (role tab/tabpanel, aria-selected, arrow/Home/End keys). Plain file import now costs one extra click (Import -> Choose file, which has focus) because the dialog hosts both sources.
+
+## Still unverified
+- `stage` 1 (warm-up) / 3 (cooldown) against the real `course/custom/save` and `detail` round trip.
+- Provisional caps vs real machine limits (sets, steps, name length) and weight upper bound.
+- Custom action ids on other accounts (assumed account-specific).
+- Non-English library names in the prompt (token size, AI behaviour); prompt token count per language.
+- Manual runs with real ChatGPT and Claude (target 9/10 first attempts import without edits).
+- 320 px layout and all themes for the new UI (round 1 could not resize the browser).

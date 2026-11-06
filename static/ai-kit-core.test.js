@@ -355,3 +355,93 @@ test("ProgramIOCore.parseImport dispatches by format; program format is unchange
   assert.equal(IO.parseImport(prog).fatal.code, "no-programs");
   assert.equal(IO.parseImport(prog).kind, undefined);
 });
+
+// ---------- diagnosis of malformed JSON ----------
+const wrapped = (body) => "Here it is:\n```json\n" + body + "\n```\n";
+test("malformed JSON is diagnosed, not mistaken for 'no JSON' or a wrong format", () => {
+  const good = JSON.stringify({ format: "myinnox1-routines", formatVersion: 1, routines: [okRoutine()] }, null, 2);
+  const cases = {
+    "trailing comma": good.replace(/\n\s*\]\s*\n\}$/, ",\n  ]\n}").replace('"reps": 8', '"reps": 8,'),
+    "comment": good.replace('"sets": 4', '// four sets\n"sets": 4'),
+    "smart quotes": good.replace(/"/g, (m, off) => (off % 2 ? "”" : "“")),
+    "truncated": good.slice(0, good.length - 30),
+  };
+  for (const [name, body] of Object.entries(cases)) {
+    const r = A.parseRoutines(wrapped(body), LIB);
+    assert.equal(r.fatal && r.fatal.code, "invalid-json", name);
+    assert.ok(r.fatal.detail && r.fatal.detail.length > 3, name);
+    const txt = A.errorsForAI([], r.fatal);
+    assert.match(txt, /not valid JSON/, name);
+    assert.match(txt, /trailing commas|commas/, name);
+  }
+  assert.equal(A.parseRoutines("no braces here", LIB).fatal.code, "no-json");
+});
+
+test("a nested object is only used when it carries a format key", () => {
+  const inner = '{"actionId": 1, "sets": 1, "reps": 1}';
+  assert.equal(A.extractJson(`{"routines": [ ${inner}, ], "x": 1}`), null);
+  assert.deepEqual(A.extractJson(`{"routines": [ ${inner} // c\n ]}`), null);
+  const nested = A.extractJson('{"broken": [1,], "inner": {"format": "myinnox1-routines", "a": 1}}');
+  assert.equal(nested.format, "myinnox1-routines");
+  // a top-level valid object without "format" is still returned (-> wrong-format, not no-json)
+  assert.equal(A.parseRoutines('{"routines": []}', LIB).fatal.code, "wrong-format");
+  const p = IO.parseImport("x {bad,} y", { library: LIB, tolerant: true });
+  assert.equal(p.fatal.code, "invalid-json");
+  assert.equal(IO.parseImport("no json", { library: LIB, tolerant: true }).fatal.code, "no-json");
+});
+
+test("extractJson stays fast on pathological input", () => {
+  for (const txt of ["{".repeat(100000), '{"a":'.repeat(20000), '{"'.repeat(50000), "}".repeat(100000) + "{"]) {
+    const t0 = process.hrtime.bigint();
+    A.findJson(txt);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.ok(ms < 200, `${txt.slice(0, 8)}... took ${ms}ms`);
+  }
+  // realistic chatty input still works
+  const chatty = "Sure {as you wish}!\n```json\n" + file([okRoutine()]) + "\n```\nbye {x";
+  assert.equal(A.extractJson(chatty).format, "myinnox1-routines");
+});
+
+// ---------- prompt <-> parser drift guards ----------
+test("prompt states every numeric rule from LIMITS and every field the parser reads", () => {
+  const p = A.buildPrompt(LIB);
+  const L = A.LIMITS;
+  for (const [k, [lo, hi]] of Object.entries({ sets: L.sets, reps: L.reps, seconds: L.seconds, restSeconds: L.restSeconds })) {
+    assert.ok(p.includes(`- ${k}: whole number ${lo}-${hi}`), k);
+  }
+  assert.ok(p.includes(`${L.routines[0]} to ${L.routines[1]} items`));
+  assert.ok(p.includes(`at most ${L.nameLength} characters`));
+  assert.ok(p.includes(`at most ${L.descriptionLength} characters`));
+  assert.ok(p.includes(`${L.weightKg[0]} to ${L.weightKg[1]}`));
+  for (const f of ["format", "formatVersion", "routines", "schedule", "name", "description", "level", "warmUp", "main", "cooldown", "actionId", "sets", "reps", "seconds", "restSeconds", "weightKg", "weekday"]) {
+    assert.ok(p.includes(`"${f}"`) || p.includes(`${f}:`), f);
+  }
+  for (const w of A.WEEKDAYS) assert.ok(p.includes(`"${w}"`), w);
+  for (const l of A.LEVELS) assert.ok(p.includes(l), l);
+});
+
+test("the parser enforces exactly the LIMITS the prompt states (boundaries)", () => {
+  const L = A.LIMITS;
+  const reps = (n) => codes(parse([okRoutine({ main: [{ actionId: 305, sets: 1, reps: n }] })]));
+  const secs = (n) => codes(parse([okRoutine({ main: [{ actionId: 330, sets: 1, seconds: n }] })]));
+  const sets = (n) => codes(parse([okRoutine({ main: [{ actionId: 305, sets: n, reps: 5 }] })]));
+  const rest = (n) => codes(parse([okRoutine({ main: [{ actionId: 305, sets: 1, reps: 5, restSeconds: n }] })]));
+  const wt = (n) => codes(parse([okRoutine({ main: [{ actionId: 305, sets: 1, reps: 5, weightKg: n }] })]));
+  for (const [fn, [lo, hi]] of [[reps, L.reps], [secs, L.seconds], [sets, L.sets], [rest, L.restSeconds], [wt, L.weightKg]]) {
+    assert.deepEqual(fn(lo), []); assert.deepEqual(fn(hi), []);
+    assert.equal(fn(lo - 1).length, 1); assert.equal(fn(hi + 1).length, 1);
+  }
+  const many = (n) => A.parseRoutines(file(Array.from({ length: n }, (_, i) => okRoutine({ name: "R" + i }))), LIB).fatal;
+  assert.equal(many(L.routines[1]), null);
+  assert.equal(many(L.routines[1] + 1).code, "too-many-routines");
+});
+
+test("routine name and description length caps", () => {
+  const L = A.LIMITS;
+  assert.deepEqual(codes(parse([okRoutine({ name: "n".repeat(L.nameLength) })])), []);
+  const r = parse([okRoutine({ name: "n".repeat(L.nameLength + 1) })]);
+  assert.deepEqual(codes(r), ["name-too-long"]);
+  assert.match(A.errorText(r.errors[0]), /longer than 60 characters/);
+  assert.deepEqual(codes(parse([okRoutine({ description: "d".repeat(L.descriptionLength) })])), []);
+  assert.deepEqual(codes(parse([okRoutine({ description: "d".repeat(L.descriptionLength + 1) })])), ["description-too-long"]);
+});

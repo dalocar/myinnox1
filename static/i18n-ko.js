@@ -554,5 +554,8 @@
     "\"schedule\" must be a list.": "\"schedule\"은 목록이어야 합니다.",
     "weekday must be one of mon, tue, wed, thu, fri, sat, sun.": "weekday는 mon, tue, wed, thu, fri, sat, sun 중 하나여야 합니다.",
     "schedule refers to \"{name}\", which is not a routine name in this file.": "schedule이 이 파일의 루틴 이름이 아닌 \"{name}\"을(를) 가리킵니다.",
+    "A JSON object was found but it is not valid JSON ({detail}). Check for missing or trailing commas, // comments, curly quotes instead of straight quotes, and unescaped quotes, then send the complete JSON again.": "JSON 객체를 찾았지만 올바른 JSON이 아닙니다({detail}). 빠졌거나 불필요한 쉼표, // 주석, 곧은 따옴표 대신 쓴 둥근 따옴표, 이스케이프되지 않은 따옴표를 확인한 뒤 전체 JSON을 다시 보내세요.",
+    "The routine name is longer than {max} characters.": "루틴 이름이 {max}자를 넘습니다.",
+    "The description is longer than {max} characters.": "설명이 {max}자를 넘습니다.",
   },
 };

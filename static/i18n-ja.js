@@ -555,5 +555,8 @@
     "\"schedule\" must be a list.": "\"schedule\" はリストである必要があります。",
     "weekday must be one of mon, tue, wed, thu, fri, sat, sun.": "weekday は mon、tue、wed、thu、fri、sat、sun のいずれかである必要があります。",
     "schedule refers to \"{name}\", which is not a routine name in this file.": "schedule は、このファイルのルーティン名ではない \"{name}\" を参照しています。",
+    "A JSON object was found but it is not valid JSON ({detail}). Check for missing or trailing commas, // comments, curly quotes instead of straight quotes, and unescaped quotes, then send the complete JSON again.": "JSON オブジェクトが見つかりましたが、有効な JSON ではありません（{detail}）。不足または余分なカンマ、// コメント、まっすぐな引用符ではなく曲がった引用符、エスケープされていない引用符を確認し、JSON 全体をもう一度送ってください。",
+    "The routine name is longer than {max} characters.": "ルーティン名が {max} 文字を超えています。",
+    "The description is longer than {max} characters.": "説明が {max} 文字を超えています。",
   },
 };

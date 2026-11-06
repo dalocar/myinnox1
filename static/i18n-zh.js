@@ -554,5 +554,8 @@
     "\"schedule\" must be a list.": "\"schedule\" 必须是列表。",
     "weekday must be one of mon, tue, wed, thu, fri, sat, sun.": "weekday 必须是 mon、tue、wed、thu、fri、sat、sun 之一。",
     "schedule refers to \"{name}\", which is not a routine name in this file.": "schedule 引用了 \"{name}\"，它不是此文件中的训练名称。",
+    "A JSON object was found but it is not valid JSON ({detail}). Check for missing or trailing commas, // comments, curly quotes instead of straight quotes, and unescaped quotes, then send the complete JSON again.": "找到了 JSON 对象，但不是有效的 JSON（{detail}）。请检查缺少或多余的逗号、// 注释、用了弯引号而不是直引号、未转义的引号，然后重新发送完整的 JSON。",
+    "The routine name is longer than {max} characters.": "训练名称超过 {max} 个字符。",
+    "The description is longer than {max} characters.": "说明超过 {max} 个字符。",
   },
 };

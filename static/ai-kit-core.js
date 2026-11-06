@@ -23,7 +23,9 @@
   const LIMITS = {
     routines: [1, 7], sets: [1, 10], reps: [1, 100], seconds: [5, 600], restSeconds: [0, 300],
     weightKg: [0, 300], // upper bound is only a sanity check, not a machine limit
+    nameLength: 60, descriptionLength: 300, // the editor has no limit; keeps names readable in the program list
   };
+  const L = LIMITS;
   const DEFAULT_REST = 30;
   const DEFAULT_SIDE_WEIGHT = 50; // tenths of a kg; same fallback as addStepFromAction()
   const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -146,15 +148,15 @@ If the user's goal message does not already say it, ask for: their goal, how man
 Top level: "format", "formatVersion", "routines" (required), "schedule" (optional).
 
 Rules:
-- routines: 1 to 7 items; names must be unique in the file.
-- Routine: "name" (required), "description" (optional text), "level" (optional: beginner | intermediate | advanced), "warmUp" (optional list), "main" (required, at least 1 step), "cooldown" (optional list).
+- routines: ${L.routines[0]} to ${L.routines[1]} items; names must be unique in the file.
+- Routine: "name" (required, at most ${L.nameLength} characters), "description" (optional text, at most ${L.descriptionLength} characters), "level" (optional: beginner | intermediate | advanced), "warmUp" (optional list), "main" (required, at least 1 step), "cooldown" (optional list).
 - Step: "actionId" (required) and "sets" (required), then "reps" or "seconds" as described below, plus optional "restSeconds" and "weightKg".
 - actionId: a whole number taken from the library table. Never invent an id. If no suitable action exists, choose another one.
-- sets: whole number 1-10.
-- reps: whole number 1-100. Required when the action's measure is "reps"; NOT allowed when it is "seconds".
-- seconds: whole number 5-600. Required when the action's measure is "seconds"; NOT allowed when it is "reps".
-- restSeconds: whole number 0-300 (rest after each set), optional, default 30.
-- weightKg: plain kg, 0 or more, at most one decimal (for example 12.5), optional. Omit it to use the action's default. Ignored when the action's load is "none". For load "per_side" it is the weight per side; for "combined" it is the weight per cable.
+- sets: whole number ${L.sets[0]}-${L.sets[1]}.
+- reps: whole number ${L.reps[0]}-${L.reps[1]}. Required when the action's measure is "reps"; NOT allowed when it is "seconds".
+- seconds: whole number ${L.seconds[0]}-${L.seconds[1]}. Required when the action's measure is "seconds"; NOT allowed when it is "reps".
+- restSeconds: whole number ${L.restSeconds[0]}-${L.restSeconds[1]} (rest after each set), optional, default ${DEFAULT_REST}.
+- weightKg: plain kg, ${L.weightKg[0]} to ${L.weightKg[1]}, at most one decimal (for example 12.5), optional. Omit it to use the action's default. Ignored when the action's load is "none". For load "per_side" it is the weight per side; for "combined" it is the weight per cable.
 - schedule: optional list of { "weekday": "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", "routine": "<exact routine name>" }.
 
 Complete example:
@@ -190,14 +192,19 @@ Complete example:
   }
 
   // ---------- D. JSON extraction ----------
-  // First balanced {...} (string-aware) that parses; prefers one that has a "format" key so a
-  // stray object in the chat text before the answer is skipped. Tolerates fences and chatter.
-  function extractJson(text) {
-    const s = String(text == null ? "" : text).replace(/^﻿/, "");
-    let first = null, tries = 0;
-    for (let i = s.indexOf("{"); i !== -1 && tries < 60; i = s.indexOf("{", i + 1)) {
+  // Finds the JSON object in chat text. Scans balanced {...} candidates (string-aware) and returns
+  // the first one that parses, preferring one with a "format" key. A candidate nested inside a
+  // balanced-but-invalid one is only accepted when it carries "format" (otherwise a comment or
+  // trailing comma in the outer object would surface an inner step object). Work is capped
+  // (budget proportional to the text) so unbalanced input stays linear.
+  // -> { value, error, hasBrace }: value null + hasBrace = "JSON found but invalid", error = parser message.
+  function findJson(text) {
+    const s = String(text == null ? "" : text).replace(/^\ufeff/, "");
+    let first = null, error = null, failedEnd = -1, budget = 8 * s.length + 10000;
+    const hasBrace = s.indexOf("{") !== -1;
+    for (let i = s.indexOf("{"); i !== -1 && budget > 0; i = s.indexOf("{", i + 1)) {
       let depth = 0, inStr = false, esc = false, end = -1;
-      for (let j = i; j < s.length; j++) {
+      for (let j = i; j < s.length && budget-- > 0; j++) {
         const c = s[j];
         if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
         if (c === '"') inStr = true;
@@ -205,14 +212,21 @@ Complete example:
         else if (c === "}" && --depth === 0) { end = j; break; }
       }
       if (end === -1) continue;
-      tries++;
       try {
         const v = JSON.parse(s.slice(i, end + 1));
-        if (isObj(v)) { if ("format" in v) return v; if (!first) first = v; }
-      } catch { /* try the next brace */ }
+        if (isObj(v)) {
+          if ("format" in v) return { value: v, error: null, hasBrace };
+          if (!first && i > failedEnd) first = v;
+        }
+      } catch (e) {
+        if (!error) error = String(e && e.message || e).slice(0, 160);
+        if (i > failedEnd) failedEnd = end;
+      }
     }
-    return first;
+    if (first) return { value: first, error: null, hasBrace };
+    return { value: null, error: error || (hasBrace ? "unbalanced braces, the reply may be cut off" : null), hasBrace };
   }
+  function extractJson(text) { return findJson(text).value; }
 
   // ---------- hydration ----------
   const libKg = (a) => (typeof a.sideWeight === "string" ? parseFloat(a.sideWeight) : a.sideWeight);
@@ -254,6 +268,9 @@ Complete example:
   // code -> English template. The screen translates the same strings with t().
   const MESSAGES = {
     "no-json": "No JSON object was found in the text.",
+    "invalid-json": "A JSON object was found but it is not valid JSON ({detail}). Check for missing or trailing commas, // comments, curly quotes instead of straight quotes, and unescaped quotes, then send the complete JSON again.",
+    "name-too-long": "The routine name is longer than {max} characters.",
+    "description-too-long": "The description is longer than {max} characters.",
     "wrong-format": 'The file must have "format": "myinnox1-routines" and a "formatVersion" of 1.',
     "newer-version": "This file uses format version {version}, which this app does not know.",
     "no-routines": '"routines" must be a list with at least one routine.',
@@ -353,7 +370,12 @@ Complete example:
   //    `errors` = every blocking problem incl. schedule ones (those do not block a program).
   function parseRoutines(input, actions, opts = {}) {
     const fail = (fatal) => ({ fatal, programs: [], schedule: [], errors: [], warnings: [] });
-    const data = typeof input === "string" ? extractJson(input) : input;
+    let data = input;
+    if (typeof input === "string") {
+      const f = findJson(input);
+      if (f.value == null) return fail(f.hasBrace ? { code: "invalid-json", detail: f.error } : { code: "no-json" });
+      data = f.value;
+    }
     if (!isObj(data)) return fail({ code: "no-json" });
     if (data.format !== FORMAT) return fail({ code: "wrong-format" });
     if (typeof data.formatVersion !== "number" || !Number.isInteger(data.formatVersion) || data.formatVersion < 1) return fail({ code: "wrong-format" });
@@ -370,11 +392,13 @@ Complete example:
       const routine = name || `#${ri + 1}`;
       const rerr = (code, extra) => out.errors.push({ code, routine, ...extra });
       if (!isObj(r)) { rerr("routine-not-object"); return { name: "", program: r, ...out }; }
+      if (name.length > L.nameLength) rerr("name-too-long", { max: L.nameLength });
       if (!name) rerr("no-name");
       else if (names.has(name.toLowerCase())) rerr("duplicate-name", { name });
       names.add(name.toLowerCase());
       if (!absent(r.level) && !LEVELS.includes(r.level)) rerr("bad-level");
       if (!absent(r.description) && typeof r.description !== "string") rerr("bad-text", { field: "description" });
+      else if (typeof r.description === "string" && r.description.length > L.descriptionLength) rerr("description-too-long", { max: L.descriptionLength });
 
       const lists = {};
       for (const l of Object.keys(LISTS)) {
@@ -423,6 +447,6 @@ Complete example:
   return {
     FORMAT, FORMAT_VERSION, LIBRARY_FORMAT, PROMPT_VERSION, LIMITS, LISTS, WEEKDAYS, LEVELS, MESSAGES, SKIPPED, PROMPT_TEXT,
     libraryForAI, libraryTable, libraryFilename, guideFilename, buildExample, buildPrompt, buildGuide,
-    extractJson, hydrateStep, parseRoutines, messageParts, whereText, errorText, errorsForAI, toAIAction,
+    extractJson, findJson, hydrateStep, parseRoutines, messageParts, whereText, errorText, errorsForAI, toAIAction,
   };
 });

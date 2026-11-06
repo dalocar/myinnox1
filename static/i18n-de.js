@@ -556,5 +556,8 @@
     "\"schedule\" must be a list.": "\"schedule\" muss eine Liste sein.",
     "weekday must be one of mon, tue, wed, thu, fri, sat, sun.": "weekday muss mon, tue, wed, thu, fri, sat oder sun sein.",
     "schedule refers to \"{name}\", which is not a routine name in this file.": "schedule verweist auf \"{name}\", das kein Routinenname in dieser Datei ist.",
+    "A JSON object was found but it is not valid JSON ({detail}). Check for missing or trailing commas, // comments, curly quotes instead of straight quotes, and unescaped quotes, then send the complete JSON again.": "Es wurde ein JSON-Objekt gefunden, aber es ist kein gültiges JSON ({detail}). Prüfe fehlende oder überzählige Kommas, //-Kommentare, typografische statt gerader Anführungszeichen und nicht maskierte Anführungszeichen und sende das vollständige JSON erneut.",
+    "The routine name is longer than {max} characters.": "Der Routinenname ist länger als {max} Zeichen.",
+    "The description is longer than {max} characters.": "Die Beschreibung ist länger als {max} Zeichen.",
   },
 };

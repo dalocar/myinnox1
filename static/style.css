@@ -1098,6 +1098,7 @@ input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow:
 .ai-menu textarea:focus, #pio-modal textarea:focus { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
 #pio-modal textarea::placeholder { color: var(--placeholder); }
 .pio-tabs { flex: none; }
+.pio-tabs button[aria-selected="true"] { background: var(--primary); color: var(--on-primary); }
 .pio-pane { display: flex; flex-direction: column; gap: 8px; }
 .pio-pane[hidden] { display: none; }
 #pio-ai-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }

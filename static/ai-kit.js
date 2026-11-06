@@ -12,7 +12,12 @@
     if (!open) $("ai-fallback").hidden = true;
   }
   btn.addEventListener("click", () => { setOpen(menu.hidden); $("ai-status").textContent = ""; });
-  menu.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); btn.focus(); } });
+  // Escape closes the menu from inside it or from the toggle button, and returns focus to the toggle.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || menu.hidden) return;
+    if (e.target !== btn && !menu.contains(e.target)) return;
+    e.stopPropagation(); setOpen(false); btn.focus();
+  });
 
   const status = (msg, isErr) => { const el = $("ai-status"); el.textContent = msg; el.className = "meta" + (isErr ? " err" : ""); };
   const opts = () => ({ lang: I18N.lang, includeCustom: $("ai-custom").checked });

@@ -102,8 +102,9 @@
     try { data = JSON.parse(String(text).replace(/^\ufeff/, "")); } catch { data = undefined; }
     if (data === undefined && opts.tolerant) {
       const kit = aiKit();
-      data = kit ? kit.extractJson(text) : undefined;
-      if (data == null) return { programs: [], fatal: { code: "no-json" } };
+      const f = kit ? kit.findJson(text) : { value: null };
+      data = f.value;
+      if (data == null) return { programs: [], fatal: f.hasBrace ? { code: "invalid-json", detail: f.error } : { code: "no-json" } };
     }
     if (data === undefined) return { programs: [], fatal: { code: "bad-json" } };
     if (isObj(data) && data.format === "myinnox1-routines") {

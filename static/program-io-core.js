@@ -89,9 +89,29 @@
   // text -> {programs: [{name, program, errors: []}], fatal: null | {code, ...}}
   // Invalid programs are kept in the list with their errors so the preview can
   // show why they are not importable; the caller imports only errors.length === 0.
-  function parseImport(text) {
+  // Dispatch by `format`: "myinnox1-program" is the original path, untouched;
+  // "myinnox1-routines" (AI kit) goes to AIKitCore.parseRoutines and needs
+  // opts.library (raw action list). opts.tolerant accepts Markdown fences and text
+  // around the JSON (pasted chat answers); opts.skipBad drops bad steps (routines only).
+  function aiKit() {
+    if (typeof module !== "undefined" && module.exports) return require("./ai-kit-core.js");
+    return (typeof self !== "undefined" ? self : this).AIKitCore;
+  }
+  function parseImport(text, opts = {}) {
     let data;
-    try { data = JSON.parse(String(text).replace(/^﻿/, "")); } catch { return { programs: [], fatal: { code: "bad-json" } }; }
+    try { data = JSON.parse(String(text).replace(/^\ufeff/, "")); } catch { data = undefined; }
+    if (data === undefined && opts.tolerant) {
+      const kit = aiKit();
+      const f = kit ? kit.findJson(text) : { value: null };
+      data = f.value;
+      if (data == null) return { programs: [], fatal: f.hasBrace ? { code: "invalid-json", detail: f.error } : { code: "no-json" } };
+    }
+    if (data === undefined) return { programs: [], fatal: { code: "bad-json" } };
+    if (isObj(data) && data.format === "myinnox1-routines") {
+      const kit = aiKit();
+      const r = kit.parseRoutines(data, opts.library, { skipBad: !!opts.skipBad });
+      return { kind: "routines", programs: r.programs, fatal: r.fatal, schedule: r.schedule, errors: r.errors, fileErrors: r.fileErrors || [] };
+    }
     if (!isObj(data) || data.format !== FORMAT) return { programs: [], fatal: { code: "wrong-format" } };
     if (!num(data.formatVersion) || data.formatVersion < 1) return { programs: [], fatal: { code: "wrong-format" } };
     if (data.formatVersion > FORMAT_VERSION) return { programs: [], fatal: { code: "newer-version", version: data.formatVersion } };

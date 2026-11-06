@@ -200,7 +200,7 @@ Complete example:
   // -> { value, error, hasBrace }: value null + hasBrace = "JSON found but invalid", error = parser message.
   function findJson(text) {
     const s = String(text == null ? "" : text).replace(/^\ufeff/, "");
-    let first = null, error = null, failedEnd = -1, budget = 8 * s.length + 10000;
+    let first = null, error = null, failedEnd = -1, unclosed = false, budget = 8 * s.length + 10000;
     const hasBrace = s.indexOf("{") !== -1;
     for (let i = s.indexOf("{"); i !== -1 && budget > 0; i = s.indexOf("{", i + 1)) {
       let depth = 0, inStr = false, esc = false, end = -1;
@@ -211,7 +211,7 @@ Complete example:
         else if (c === "{") depth++;
         else if (c === "}" && --depth === 0) { end = j; break; }
       }
-      if (end === -1) continue;
+      if (end === -1) { unclosed = true; continue; }
       try {
         const v = JSON.parse(s.slice(i, end + 1));
         if (isObj(v)) {
@@ -223,7 +223,9 @@ Complete example:
         if (i > failedEnd) failedEnd = end;
       }
     }
-    if (first) return { value: first, error: null, hasBrace };
+    // A format-less object is only trusted when nothing else in the text failed to parse or close:
+    // otherwise it is a fragment (inner step of a cut-off reply, stray object before a broken answer).
+    if (first && !error && !unclosed) return { value: first, error: null, hasBrace };
     return { value: null, error: error || (hasBrace ? "unbalanced braces, the reply may be cut off" : null), hasBrace };
   }
   function extractJson(text) { return findJson(text).value; }
@@ -389,16 +391,18 @@ Complete example:
     const programs = data.routines.map((r, ri) => {
       const out = { errors: [], warnings: [] };
       const name = isObj(r) && typeof r.name === "string" ? r.name.trim() : "";
-      const routine = name || `#${ri + 1}`;
+      const cp = (x) => Array.from(x).length;
+      const shown = cp(name) > 40 ? Array.from(name).slice(0, 40).join("") + "…" : name;
+      const routine = shown || `#${ri + 1}`;
       const rerr = (code, extra) => out.errors.push({ code, routine, ...extra });
       if (!isObj(r)) { rerr("routine-not-object"); return { name: "", program: r, ...out }; }
-      if (name.length > L.nameLength) rerr("name-too-long", { max: L.nameLength });
+      if (cp(name) > L.nameLength) rerr("name-too-long", { max: L.nameLength });
       if (!name) rerr("no-name");
-      else if (names.has(name.toLowerCase())) rerr("duplicate-name", { name });
+      else if (names.has(name.toLowerCase())) rerr("duplicate-name", { name: shown });
       names.add(name.toLowerCase());
       if (!absent(r.level) && !LEVELS.includes(r.level)) rerr("bad-level");
       if (!absent(r.description) && typeof r.description !== "string") rerr("bad-text", { field: "description" });
-      else if (typeof r.description === "string" && r.description.length > L.descriptionLength) rerr("description-too-long", { max: L.descriptionLength });
+      else if (typeof r.description === "string" && cp(r.description) > L.descriptionLength) rerr("description-too-long", { max: L.descriptionLength });
 
       const lists = {};
       for (const l of Object.keys(LISTS)) {

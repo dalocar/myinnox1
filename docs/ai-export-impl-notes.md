@@ -27,10 +27,10 @@ Issue #10, branch `ai-routines-v1`. Design: `docs/plan-ai-export.md`.
 - Pre-existing quirk noticed: `getActionLibrary()` caches an empty list if the first fetch returns no data.
 
 ## Round-1 QA changes
-- Malformed JSON: `findJson` reports "JSON found but invalid" (`invalid-json`, with the parser message and a hint) instead of "no JSON" or a misleading wrong-format. A nested object is only used when it has a `format` key. Still rejects, never repairs (trailing commas, comments, curly quotes).
+- Malformed JSON: `findJson` reports "JSON found but invalid" (`invalid-json`, with the parser message and a hint) instead of "no JSON" or a misleading wrong-format. A format-less object is only returned when nothing else in the text failed to parse or close, so inner fragments of a truncated reply, or a stray valid object before a broken answer, give `invalid-json` ("cut off") rather than wrong-format; objects with a `format` key always win. Still rejects, never repairs (trailing commas, comments, curly quotes).
 - `findJson` has a work budget proportional to the text length (no quadratic scans on unbalanced braces).
 - The prompt's numeric rules and caps are built from `LIMITS`; tests check the prompt text and the parser boundaries against `LIMITS`.
-- Routine name max 60 and description max 300 characters (the program editor has no limit; these are provisional like the other caps).
+- Routine name max 60 and description max 300 characters (the program editor has no limit; these are provisional like the other caps), counted in code points; names echoed in errors are cut to 40 characters.
 - Import dialog: tablist semantics (role tab/tabpanel, aria-selected, arrow/Home/End keys). Plain file import now costs one extra click (Import -> Choose file, which has focus) because the dialog hosts both sources.
 
 ## Still unverified
@@ -39,4 +39,6 @@ Issue #10, branch `ai-routines-v1`. Design: `docs/plan-ai-export.md`.
 - Custom action ids on other accounts (assumed account-specific).
 - Non-English library names in the prompt (token size, AI behaviour); prompt token count per language.
 - Manual runs with real ChatGPT and Claude (target 9/10 first attempts import without edits).
-- 320 px layout and all themes for the new UI (round 1 could not resize the browser).
+
+The parser's detail text (`invalid-json` detail, the JS engine's SyntaxError message) is English-only and not translated; it is meant for the AI chat.
+320 px and the 7 themes were verified by QA in rounds 1 and 2.

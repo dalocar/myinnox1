@@ -445,3 +445,36 @@ test("routine name and description length caps", () => {
   assert.deepEqual(codes(parse([okRoutine({ description: "d".repeat(L.descriptionLength) })])), []);
   assert.deepEqual(codes(parse([okRoutine({ description: "d".repeat(L.descriptionLength + 1) })])), ["description-too-long"]);
 });
+
+// ---------- round 2: truncated replies, stray objects, code-point caps ----------
+test("truncated reply mid-step is invalid-json, not wrong-format", () => {
+  const full = '{"format":"myinnox1-routines","formatVersion":1,"routines":[{"name":"A","main":[{"actionId":502,"sets":3,"reps":10},{"actionId":517,"sets":3,"reps":10}]}]}';
+  const cut = "```json\n" + full.slice(0, full.length - 30);
+  const r = A.parseRoutines(cut, LIB);
+  assert.equal(r.fatal.code, "invalid-json");
+  assert.match(r.fatal.detail, /cut off/);
+  assert.match(A.errorsForAI([], r.fatal), /not valid JSON/);
+  assert.equal(IO.parseImport(cut, { library: LIB, tolerant: true }).fatal.code, "invalid-json");
+  // stray valid object before an invalid answer
+  const bad = file([okRoutine()]).replace('"reps":8}', '"reps":8,}');
+  assert.equal(A.parseRoutines('{"note":1}\n' + bad, LIB).fatal.code, "invalid-json");
+});
+
+test("fragments never win, but real answers still do", () => {
+  assert.equal(A.parseRoutines('{"x":{"format":"other"}}', LIB).fatal.code, "wrong-format");
+  assert.equal(A.parseRoutines('{"routines": []}', LIB).fatal.code, "wrong-format");
+  assert.equal(A.parseRoutines("Sure {as asked}:\n```json\n" + file([okRoutine()]) + "\n```", LIB).fatal, null);
+  assert.equal(A.parseRoutines('{"note":1}\n' + file([okRoutine()]), LIB).fatal, null);
+});
+
+test("name and description caps count characters, not UTF-16 units; shown names are truncated", () => {
+  const L = A.LIMITS;
+  assert.deepEqual(codes(parse([okRoutine({ name: "\u{1F4AA}".repeat(L.nameLength) })])), []);
+  const long = "\u{1F4AA}".repeat(L.nameLength + 1);
+  const r = parse([okRoutine({ name: long })]);
+  assert.deepEqual(codes(r), ["name-too-long"]);
+  assert.ok(Array.from(r.errors[0].routine).length <= 41);
+  assert.ok(!A.errorText(r.errors[0]).includes(long));
+  assert.deepEqual(codes(parse([okRoutine({ description: "\u{1F4AA}".repeat(L.descriptionLength) })])), []);
+  assert.deepEqual(codes(parse([okRoutine({ description: "\u{1F4AA}".repeat(L.descriptionLength + 1) })])), ["description-too-long"]);
+});

@@ -104,6 +104,23 @@ Open http://localhost:8787 and log in with your INNODIGYM account.
   picker) for a full-size popup; exercises with a demo video get a playable
   video player instead of a static image.
 
+## Using an AI to build routines
+
+Ask ChatGPT, Claude or any other AI for a routine and import the result. No account, API key or attachment needed.
+
+1. **Actions → Library → Use with AI → Copy AI prompt.** The prompt contains the instructions, the file format and the
+   whole movement library (ids, names, type, level, load, reps or seconds). "Include my custom actions" is on by default;
+   custom ids only work in your own account. You can also download the library (`.json`) or the format guide (`.md`).
+2. Paste it in an AI chat, finish the line `My goal: ` and answer its questions. It replies with one JSON block.
+3. **Programs → Import → Paste JSON**, paste the whole answer (code fences and chat text around it are fine) and import.
+   Each routine becomes a program. Weights are plain kg whatever your unit setting.
+
+If the answer has problems the preview names them (`Legs A / main / step 3: actionId 999 is not in your library`).
+**Copy errors for AI** copies them so you can paste them back into the chat, or tick **Skip steps that have problems**.
+The `schedule` field (which weekdays) is shown but informational in this version; plans are not created.
+Format and design: [`docs/plan-ai-export.md`](docs/plan-ai-export.md), implementation notes:
+[`docs/ai-export-impl-notes.md`](docs/ai-export-impl-notes.md).
+
 ## Tests
 
 The plan logic (dates, distribution, validation, API payloads) is pure code in

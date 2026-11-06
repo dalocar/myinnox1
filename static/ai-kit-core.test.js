@@ -268,7 +268,7 @@ test("schedule: valid, missing routine, bad weekday, not a list; does not block 
   assert.deepEqual(ok.errors, []);
   const miss = parse([okRoutine()], { schedule: [{ weekday: "mon", routine: "Nope" }, { weekday: "monday", routine: "Push A" }, "x"] });
   assert.deepEqual(codes(miss), ["schedule-unknown-routine", "bad-weekday", "bad-weekday"]);
-  assert.equal(A.errorText(miss.errors[0]), 'schedule / step 1: schedule refers to "Nope", which is not a routine name in this file.');
+  assert.equal(A.errorText(miss.errors[0]), 'schedule[1]: schedule refers to "Nope", which is not a routine name in this file.');
   assert.deepEqual(miss.programs[0].errors, []);
   assert.deepEqual(codes(parse([okRoutine()], { schedule: {} })), ["schedule-not-array"]);
   assert.deepEqual(parse([okRoutine()]).schedule, []);

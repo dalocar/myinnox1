@@ -213,7 +213,25 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
       <div id="actions-library">
         <div class="row-between">
           <h2>Movements</h2>
-          <button id="mv-reset" class="secondary" type="button" hidden>Reset</button>
+          <div>
+            <button id="ai-menu-btn" class="secondary" type="button" aria-expanded="false" aria-controls="ai-menu">Use with AI</button>
+            <button id="mv-reset" class="secondary" type="button" hidden>Reset</button>
+          </div>
+        </div>
+        <div id="ai-menu" class="ai-menu" hidden>
+          <p class="meta">Ask ChatGPT, Claude or another AI to build routines for you. Copy the prompt, paste it in the chat and add your goal. Then bring the answer back with Import &gt; Paste JSON.</p>
+          <label class="ai-check"><input type="checkbox" id="ai-custom" checked> <span>Include my custom actions</span></label>
+          <p class="meta ai-note">Custom action ids only work in this account.</p>
+          <div class="ai-actions">
+            <button id="ai-copy" type="button">Copy AI prompt</button>
+            <button id="ai-dl-lib" class="secondary" type="button">Download library (.json)</button>
+            <button id="ai-dl-guide" class="secondary" type="button">Download format guide (.md)</button>
+          </div>
+          <p id="ai-status" class="meta" role="status" aria-live="polite"></p>
+          <div id="ai-fallback" hidden>
+            <label for="ai-fallback-text" class="meta">Copy this text manually:</label>
+            <textarea id="ai-fallback-text" readonly rows="6"></textarea>
+          </div>
         </div>
         <div class="mv-search">
           <label for="mv-search" class="sr-only">Search movements</label>
@@ -446,6 +464,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="movements-core.js"></script>
 <script src="custom-action-core.js"></script>
 <script src="courses-core.js"></script>
+<script src="ai-kit-core.js"></script>
 <script src="program-io-core.js"></script>
 <script src="fitness-core.js"></script>
 <script src="vendor/chart.umd.min.js"></script>
@@ -454,6 +473,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="footer-version.js"></script>
 <script src="app.js"></script>
 <script src="program-io.js"></script>
+<script src="ai-kit.js"></script>
 <script src="planner.js"></script>
 <script src="movements.js"></script>
 <script src="courses.js"></script>

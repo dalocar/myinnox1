@@ -254,7 +254,7 @@ Complete example:
   // code -> English template. The screen translates the same strings with t().
   const MESSAGES = {
     "no-json": "No JSON object was found in the text.",
-    "wrong-format": 'The "format" field must be "myinnox1-routines".',
+    "wrong-format": 'The file must have "format": "myinnox1-routines" and a "formatVersion" of 1.',
     "newer-version": "This file uses format version {version}, which this app does not know.",
     "no-routines": '"routines" must be a list with at least one routine.',
     "too-many-routines": '"routines" has {count} items; the maximum is {max}.',
@@ -287,6 +287,7 @@ Complete example:
   }
   const fill = (tpl, v) => tpl.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
   function whereText(e, stepWord = (n) => `step ${n}`) {
+    if (e.list === "schedule") return e.step ? `schedule[${e.step}]` : "schedule";
     return [e.routine, e.list, e.step ? stepWord(e.step) : ""].filter((x) => x != null && x !== "").join(" / ");
   }
   function errorText(e) {

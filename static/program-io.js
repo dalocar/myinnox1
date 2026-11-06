@@ -4,6 +4,7 @@
    (tenths of kg), so files are independent of the account unit setting. */
 (() => {
   const C = window.ProgramIOCore;
+  const K = window.AIKitCore;
   const LIST_LABEL = { warmUpStepList: "Warm up", mainStepList: "Strength", relaxStepList: "Stretch" };
 
   // ---------- modal (one shared dialog for clone + import) ----------
@@ -54,9 +55,19 @@
   }
   const appVersion = () => (window.APP_VERSION && window.APP_VERSION.sha) || "";
 
-  function errorMessage(e) {
+  // Messages of the AI routines format: the English template from AIKitCore is the i18n key.
+  function routineMessage(e) {
+    const msg = t(K.messageParts(e).template, e);
+    const where = K.whereText(e, (n) => t("step {n}", { n }));
+    const body = e.skipped ? `${t(K.SKIPPED)} (${msg})` : msg;
+    return where ? `${where}: ${body}` : body;
+  }
+
+  function errorMessage(e, routines) {
+    if (routines && K.MESSAGES[e.code]) return routineMessage(e);
     const list = LIST_LABEL[e.list] ? t(LIST_LABEL[e.list]) : "";
     switch (e.code) {
+      case "no-json": case "too-many-routines": case "no-routines": case "library-unavailable": return routineMessage(e);
       case "bad-json": return t("That file is not valid JSON.");
       case "wrong-format": return t("That is not a MyInnoX1 program file.");
       case "newer-version": return t("This file was made by a newer version of MyInnoX1 (format {v}).", { v: e.version });
@@ -164,16 +175,23 @@
     $("pio-err-ok").focus();
   }
 
-  async function startImport(file, openerEl) {
-    let text;
-    try { text = await file.text(); } catch (e) { showImportError(t("Could not read the file: {msg}", { msg: C.safeMessage(e, t("The server rejected the request")) }), openerEl); return; }
-    const parsed = C.parseImport(text);
-    if (parsed.fatal) { showImportError(errorMessage(parsed.fatal), openerEl); return; }
+  // Text of a file or of the Paste JSON tab -> preview. Returns the fatal error (nothing is
+  // rendered then) or null once the preview is shown. `o`: {tolerant, skipBad}.
+  async function runImport(text, openerEl, o = {}) {
+    const opts = { tolerant: !!o.tolerant, skipBad: !!o.skipBad };
+    let parsed = C.parseImport(text, opts);
+    let actions = null;
+    if (parsed.fatal && parsed.fatal.code === "library-unavailable") {
+      try { actions = await getPickableActions(); } catch { /* stays unavailable */ }
+      parsed = C.parseImport(text, { ...opts, library: actions || [] });
+    }
+    if (parsed.fatal) return parsed.fatal;
+    const routines = parsed.kind === "routines";
 
     let existing = [], libIds = null;
     try { existing = (await fetchList()).map((x) => x.name); }
-    catch (e) { showImportError(t("Import failed: {msg}", { msg: C.safeMessage(e, t("The server rejected the request")) }), openerEl); return; }
-    try { libIds = new Set((await getPickableActions()).map((a) => a.id)); } catch { /* skip the library check */ }
+    catch (e) { return { code: "import-failed", message: t("Import failed: {msg}", { msg: C.safeMessage(e, t("The server rejected the request")) }) }; }
+    if (!routines) { try { libIds = new Set((await getPickableActions()).map((a) => a.id)); } catch { /* skip the library check */ } }
 
     const used = existing.slice();
     const rows = parsed.programs.map((entry, i) => {
@@ -196,16 +214,95 @@
       const valid = errors.length === 0;
       const name = valid ? C.uniqueName(entry.name, used, copyWord()) : entry.name;
       if (valid) used.push(name);
-      return { i, program, errors, missing, steps, valid, name, selected: valid, status: "" };
+      return { i, program, errors, warnings: entry.warnings || [], missing, steps, valid, name, selected: valid, status: "" };
     });
-    renderPreview(rows, openerEl);
+    const ctx = routines ? { kind: "routines", text, tolerant: opts.tolerant, skipBad: opts.skipBad, errors: parsed.errors, fileErrors: parsed.fileErrors, schedule: parsed.schedule } : { kind: "program" };
+    renderPreview(rows, openerEl, ctx);
+    return null;
   }
 
-  function renderPreview(rows, openerEl) {
+  async function startImport(file, openerEl) {
+    let text;
+    try { text = await file.text(); } catch (e) { showImportError(t("Could not read the file: {msg}", { msg: C.safeMessage(e, t("The server rejected the request")) }), openerEl); return; }
+    const fatal = await runImport(text, openerEl);
+    if (fatal) showImportError(fatal.message || errorMessage(fatal), openerEl);
+  }
+
+  // ---------- import dialog: File / Paste JSON ----------
+  async function copyText(text, host) {
+    const ok = window.AIKit && (await window.AIKit.writeClipboard(text));
+    if (ok) { toast(t("Copied. Paste it in your AI chat.")); return; }
+    toast(t("Copying is blocked by the browser. Select the text below and copy it."), true);
+    let ta = host.querySelector(".pio-fallback");
+    if (!ta) { ta = document.createElement("textarea"); ta.className = "pio-fallback"; ta.readOnly = true; ta.rows = 6; ta.setAttribute("aria-label", t("Errors")); host.appendChild(ta); }
+    ta.value = text; ta.focus(); ta.select();
+  }
+
+  function openImportDialog(openerEl) {
     openModal(t("Import programs"), openerEl);
     const body = $("pio-modal-body");
     body.innerHTML = `
+      <p class="meta">${escapeHtml(t("Programs exported from MyInnoX1, or routines written by an AI."))}</p>
+      <div class="pl-seg pio-tabs" role="group" aria-label="${escapeHtml(t("Import source"))}">
+        <button type="button" id="pio-tab-file-btn" aria-pressed="true">${escapeHtml(t("File"))}</button>
+        <button type="button" id="pio-tab-paste-btn" aria-pressed="false">${escapeHtml(t("Paste JSON"))}</button>
+      </div>
+      <div id="pio-pane-file" class="pio-pane">
+        <p class="meta">${escapeHtml(t("Choose a .json file."))}</p>
+        <div class="actions pio-actions">
+          <button type="button" id="pio-choose">${escapeHtml(t("Choose file"))}</button>
+          <button type="button" class="secondary" id="pio-file-cancel">${escapeHtml(t("Cancel"))}</button>
+        </div>
+      </div>
+      <div id="pio-pane-paste" class="pio-pane" hidden>
+        <label for="pio-paste">${escapeHtml(t("Paste the answer of your AI (or a program file) here."))}</label>
+        <textarea id="pio-paste" rows="9" spellcheck="false" autocomplete="off" placeholder='{ "format": "myinnox1-routines", ... }'></textarea>
+        <p id="pio-paste-err" class="server-error" role="alert" hidden></p>
+        <div id="pio-paste-fb"></div>
+        <div class="actions pio-actions">
+          <button type="button" id="pio-paste-go">${escapeHtml(t("Preview import"))}</button>
+          <button type="button" class="secondary" id="pio-paste-copy" hidden>${escapeHtml(t("Copy errors for AI"))}</button>
+          <button type="button" class="secondary" id="pio-paste-cancel">${escapeHtml(t("Cancel"))}</button>
+        </div>
+      </div>`;
+    const tab = (which) => {
+      for (const k of ["file", "paste"]) {
+        $(`pio-tab-${k}-btn`).setAttribute("aria-pressed", String(k === which));
+        $(`pio-pane-${k}`).hidden = k !== which;
+      }
+      (which === "paste" ? $("pio-paste") : $("pio-choose")).focus();
+    };
+    $("pio-tab-file-btn").onclick = () => tab("file");
+    $("pio-tab-paste-btn").onclick = () => tab("paste");
+    $("pio-choose").onclick = () => fileInput.click();
+    $("pio-file-cancel").onclick = () => closeModal();
+    $("pio-paste-cancel").onclick = () => closeModal();
+    let lastFatal = null;
+    $("pio-paste-go").onclick = async () => {
+      const err = $("pio-paste-err"), copy = $("pio-paste-copy"), go = $("pio-paste-go");
+      err.hidden = true; copy.hidden = true; lastFatal = null;
+      const text = $("pio-paste").value;
+      if (!text.trim()) { err.textContent = t("Paste the JSON first."); err.hidden = false; $("pio-paste").focus(); return; }
+      go.disabled = true;
+      const fatal = await runImport(text, openerEl, { tolerant: true });
+      go.disabled = false;
+      if (!fatal) return;
+      lastFatal = fatal;
+      err.textContent = fatal.message || (fatal.code === "wrong-format" ? t("That is not a MyInnoX1 routines file (format myinnox1-routines) or program file.") : errorMessage(fatal, true));
+      err.hidden = false;
+      copy.hidden = !!fatal.message;
+    };
+    $("pio-paste-copy").onclick = () => { if (lastFatal) copyText(K.errorsForAI([], lastFatal), $("pio-paste-fb")); };
+    $("pio-choose").focus();
+  }
+
+  function renderPreview(rows, openerEl, ctx = { kind: "program" }) {
+    openModal(t("Import programs"), openerEl);
+    const ai = ctx.kind === "routines";
+    const body = $("pio-modal-body");
+    body.innerHTML = `
       <p class="meta">${escapeHtml(t("Select the programs to import. Names that already exist get a copy suffix."))}</p>
+      <div id="pio-ai-tools"></div>
       <ul id="pio-rows" class="pio-rows"></ul>
       <p id="pio-summary" class="meta" role="status" aria-live="polite"></p>
       <div class="actions pio-actions">
@@ -225,7 +322,8 @@
       const li = document.createElement("li");
       li.className = "pio-row" + (r.valid ? "" : " invalid");
       const id = `pio-sel-${r.i}`, nid = `pio-name-${r.i}`;
-      const msgs = r.errors.map((e) => `<li class="err">${escapeHtml(errorMessage(e))}</li>`).join("");
+      const msgs = r.errors.map((e) => `<li class="err">${escapeHtml(errorMessage(e, ai))}</li>`).join("")
+        + r.warnings.map((e) => `<li class="warn">${escapeHtml(errorMessage(e, ai))}</li>`).join("");
       const warn = r.missing ? `<li class="warn">${escapeHtml(t("Not in your action library, skipped: {text}", { text: I18N.plural(r.missing, "exercise") }))}</li>` : "";
       li.innerHTML = `
         <div class="pio-row-head">
@@ -241,6 +339,7 @@
       li.querySelector(`#${nid}`).addEventListener("input", (e) => { r.name = e.target.value; refresh(); });
     }
     refresh();
+    if (ai) renderAiTools(rows, openerEl, ctx);
     const skipped = rows.filter((r) => !r.valid).length;
     if (skipped) summary.textContent = t("{n} entries in the file cannot be imported.", { n: skipped });
     $("pio-cancel").onclick = () => closeModal();
@@ -277,9 +376,29 @@
     };
   }
 
+  // AI routines extras: suggested weekdays, schedule problems, skip-bad-steps, copy errors for the AI.
+  function renderAiTools(rows, openerEl, ctx) {
+    const box = $("pio-ai-tools");
+    const day = (w) => new Date(2024, 0, 1 + K.WEEKDAYS.indexOf(w)).toLocaleDateString(I18N.lang, { weekday: "short" });
+    const sched = ctx.schedule.length ? `<p class="meta">${escapeHtml(t("Suggested days: {text}", { text: ctx.schedule.map((s) => `${day(s.weekday)} ${s.routine}`).join(", ") }))}</p>` : "";
+    const fileErrs = ctx.fileErrors.length ? `<ul class="pio-msgs">${ctx.fileErrors.map((e) => `<li class="err">${escapeHtml(errorMessage(e, true))}</li>`).join("")}</ul>` : "";
+    const hasStepProblems = ctx.skipBad || rows.some((r) => r.errors.some((e) => e.step));
+    const skip = hasStepProblems ? `<label class="ai-check"><input type="checkbox" id="pio-skip" ${ctx.skipBad ? "checked" : ""}> <span>${escapeHtml(t("Skip steps that have problems"))}</span></label>` : "";
+    const copy = ctx.errors.length ? `<button type="button" class="secondary" id="pio-copy-errors">${escapeHtml(t("Copy errors for AI"))}</button>` : "";
+    box.innerHTML = sched + fileErrs + skip + copy + `<div id="pio-copy-fb"></div>`;
+    const sk = $("pio-skip");
+    if (sk) sk.onchange = async () => { // re-parse with the other mode; the preview is rebuilt
+      const fatal = await runImport(ctx.text, openerEl, { tolerant: ctx.tolerant, skipBad: sk.checked });
+      if (fatal) showImportError(fatal.message || errorMessage(fatal, true), openerEl);
+      else { const again = $("pio-skip"); if (again) again.focus(); }
+    };
+    const cp = $("pio-copy-errors");
+    if (cp) cp.onclick = () => copyText(K.errorsForAI(ctx.errors), $("pio-copy-fb"));
+  }
+
   // ---------- wiring ----------
   const fileInput = $("pio-file");
-  $("import-program-btn").addEventListener("click", () => fileInput.click());
+  $("import-program-btn").addEventListener("click", (e) => openImportDialog(e.currentTarget));
   fileInput.addEventListener("change", () => {
     const f = fileInput.files && fileInput.files[0];
     fileInput.value = ""; // allow re-selecting the same file

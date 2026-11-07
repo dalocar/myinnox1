@@ -59,3 +59,51 @@ Also noted, not defects: the list counts sessions with a chartable value (Seated
 - VoiceOver, NVDA, TalkBack; real touch devices (44 px measured on a 320 emulated width, pointer stayed fine at 768).
 - Real X1 API behaviour (`/action/list` per-language names, caps); the stub answers the save call locally, so the "request body" check used the stub's capture (`window.__saves`), not the fixture server.
 - Two real browser tabs racing for the Web Lock (only a held lock was simulated); real `requestIdleCallback` under load; a 300-exercise list's render cost; purge rules in the browser; unit change while the overlay is open; the stub re-logs-in on reload, so "after logout" was verified by request counts until the page reloaded.
+
+---
+
+# Round 2: re-verification of commit 00a2928 (fixes for P1 to P8)
+
+Environment: fixture :8861, stubbed app :8862, same browser pane. Product code untouched.
+
+## Verdict: READY (all of P1 to P8 fixed; 0 open defects, 2 notes)
+
+## Automated checks
+`node --test static/*.test.js` three runs: 258 pass, 0 fail. `check-external-hosts.js` ok (52 files). `check-theme-contrast.js` all pairs pass (11 advisory, pre-existing).
+
+## Fix verification
+| Id | Result | Evidence |
+|---|---|---|
+| P1 | Fixed | Escape with "row" typed clears the box, stays in the list (8 rows, focus on the box); a second Escape on the empty box returns to the dashboard. |
+| P2 | Fixed | Warm-up to foreground hand-off: `#synced=20` gives exactly 20 detail requests (20 unique); `#synced=25` gives 25 (25 unique); hand-off with 5 s latency: 12 requests, 12 unique, no hang. In-flight request failing (500 x3 with 2.5 s latency): 15 requests (12 + the 3 failed attempts), 12 unique, sync done, 86 cached, no deadlock: the taking-over run waits for the rejected flight (rejections are swallowed in `track`) and then fetches itself. Logout (`clearAll`) with 3 details in flight at 4 s latency: no progress DB reappears after the late responses, `S.workouts` stays empty, no request after the wipe, no unhandled rejection (stores are guarded with `S.store === store`; the account-switch case is covered by the same identity check, code review only). |
+| P3 | Fixed | Offline with no cache: banner has Retry; `__epOffline(false)` resumes the sync on its own (7 rows after 12 s, status fetching). |
+| P4 | Fixed | Browser: "fuss" and "FUSS" find Fußheben, "strasse", "STRAßE" find Straße, "ß" and "ẞ" find both ss/ß names, "ubung" and "Übung" find Übung, "rucken" finds Rücken, "nino" and "pequeno" find Pequeño niño, "ñ" works, full-width ABC and "abc" match, half-width "ﾍﾞﾝﾁ" finds ベンチ, "ヘンチ" and half-width "ﾍﾝﾁ" do NOT (dakuten kept). |
+| P5 | Fixed | At 320: icon 196 to 240, menu 244 to 278, gap 4 px, icon 44 x 44, no overflow. |
+| P6 | Fixed | Row label now "View progress of Hammer Curl, Per side, Last session ..."; `ul` has role=list; `#ex-list` role=region labelled by its title. |
+| P7 | Fixed | Offline text appears once (banner with Retry; empty-state block hidden). |
+| P8 | Fixed | Typing "row" then Tab immediately: the filter applies first, focus lands on "Single-Arm Row (L)". |
+
+## Regression
+- First sync with `waf=60:10:10`: 86 details + 2 list + 2 library, peak 41 per 10 s, 0 blocks.
+- Warm-up gates: hidden waits then runs on `visibilitychange`; `recent` on reload; `no-full-sync` for a new account; `save-data` blocks. No requests where blocked.
+- Editor overlay at 320: edits (name, weight 9.1), scroll 250 and icon focus survive Escape; Save posts the full program (id 71, 8 steps, w0 = 91).
+- Logout wipe: `clearAll` leaves no progress DBs and clears the registry.
+
+## Acceptance criteria (round 2)
+| AC | Round 1 | Round 2 |
+|---|---|---|
+| 1 List, rows, tap, Back | Pass | Pass |
+| 2 Search and sorts | Pass (P1, P4) | Pass |
+| 3 Cached, live, states | Pass (P3, P7) | Pass |
+| 4 Editor icon | Pass (P5) | Pass |
+| 5 Warm-up | Pass (P2) | Pass |
+| 6 No Phase 1 regression | Pass | Pass |
+| 7 i18n, units, themes, widths, a11y | Pass (P6) | Pass |
+| 8 Tests and checks | Pass | Pass (258 tests) |
+
+## Notes (not defects)
+- "uebung" does not find "Übung": German ue/ae/oe transliteration is not folded (not claimed by the fix).
+- In `doSync`, `S.workouts.set` runs after `await store.put`; an account switch inside that few-millisecond await could add one old record to the new in-memory map (never to the new DB). Not reproducible in practice.
+
+## Still not verified
+VoiceOver, NVDA, TalkBack and real touch devices; the real X1 API (a hung request without any fetch timeout would make a taking-over run wait until the browser times out; a slow request was tested, a never-settling one was not); two real tabs racing for the Web Lock; render cost of a 300-exercise list; purge rules in the browser; account switch with a late response was verified by code review only (logout was run live).

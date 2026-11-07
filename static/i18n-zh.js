@@ -605,5 +605,7 @@
     "The server is busy or unreachable. Try again in a moment.": "服务器繁忙或无法连接。请稍后再试。",
     "{n} session": "{n} 次训练",
     "{n} sessions": "{n} 次训练",
+    "Waiting {s} s (rate limit)": "等待 {s} 秒（请求限制）",
+    "Syncing in another tab": "正在其他标签页中同步",
   },
 };

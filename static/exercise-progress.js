@@ -37,6 +37,8 @@
     "{name}: {metric}. Line chart. {summary}": "{name}: {metric}. Gráfico de líneas. {summary}",
     "Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}": "Último {latest}, mejor marca {best} el {date}, {sessions}, cambio desde el primero {change}",
     "Progress summary": "Resumen del progreso",
+    "Waiting {s} s (rate limit)": "Esperando {s} s (límite de peticiones)",
+    "Syncing in another tab": "Sincronizando en otra pestaña",
     "{n} session": "{n} sesión", "{n} sessions": "{n} sesiones",
     "{n} in this range": "{n} en este periodo",
     "No history is saved on this device yet.": "Todavía no hay historial guardado en este dispositivo.",
@@ -138,9 +140,9 @@
   }
 
   // ---------- API ----------
-  async function call(path) {
+  async function call(path, opts) {
     try {
-      const res = await api(path);
+      const res = await api(path, opts || {});
       if (!res || typeof res !== "object") throw new Error("Invalid response");
       if (res.code != null && ![200, "200", 0, "0"].includes(res.code)) { const e = new Error(res.msg || "Error " + res.code); e.code = Number(res.code); throw e; }
       return res;
@@ -156,23 +158,54 @@
   const retryOpts = (run) => ({
     sleep: nap,
     shouldStop: () => run !== S.runId || offline(),
-    onRetry: (attempt, delay) => { gate.delay(delay * scale()); setSync({ msg: t("The server asked us to slow down. Waiting {s} s…", { s: Math.ceil(delay / 1000) }) }); },
+    onRetry: (attempt, delay, err) => { if (err && err.rateLimited) return; gate.delay(delay * scale()); setSync({ msg: t("The server asked us to slow down. Waiting {s} s…", { s: Math.ceil(delay / 1000) }) }); },
   });
   const gate = Core.makeGate();
 
-  async function fetchLibrary(store) {
+  // Every sync request goes through the pacer (WAF budget, see exercise-progress-core.js). Any HTTP 429 is a block:
+  // tab-wide cooldown, then half rate; a second block in the same sync pauses it.
+  let ticker = 0;
+  function startTicker() {
+    if (ticker) return;
+    ticker = setInterval(() => {
+      if (!S.open || Core.requestLog.cooldownUntil <= Date.now()) { clearInterval(ticker); ticker = 0; }
+      renderSync();
+    }, 1000);
+  }
+  async function pacedCall(path, run, pacer) {
+    return Core.withRetry(async () => {
+      await gate.wait();
+      const started = await pacer.acquire(() => run !== S.runId, (ms, why) => { if (why === "cooldown") startTicker(); });
+      if (started == null) { const e = new Error("stopped"); e.fatal = true; e.stopped = true; throw e; }
+      try {
+        return await call(path, { paced: true });
+      } catch (e) {
+        if (e && Number(e.status) === 429) {
+          const b = pacer.block(e.retryAfter, started);
+          if (b.second) { pacer.halt(); e.pause = true; e.fatal = true; } else e.rateLimited = true;
+          startTicker(); renderSync();
+        }
+        throw e;
+      }
+    }, Object.assign(retryOpts(run), {
+      isRetryable: (e) => !(e && e.fatal) && ((e && e.rateLimited) || Core.isRetryable(e)),
+      delayFor: (e) => (e && e.rateLimited ? 0 : null), // the pacer itself waits out the cooldown
+    }));
+  }
+
+  async function fetchLibrary(store, run, pacer) {
     const cached = await store.getMeta("library");
     if (cached && Array.isArray(cached.items)) S.library = new Map(cached.items);
     if (cached && Date.now() - cached.at < 24 * 3600 * 1000) return;
     try {
       const items = new Map();
       const add = (arr) => { for (const a of Array.isArray(arr) ? arr : []) if (a && a.id != null) items.set(String(a.id), { sideNum: a.sideNum == null ? null : Number(a.sideNum), countType: a.countType == null ? null : Number(a.countType), name: a.name == null ? "" : String(a.name) }); };
-      add((await call("/action/list")).data);
-      try { add((await call("/action/list?custom=true")).data); } catch (e) { /* custom actions are optional */ }
+      add((await pacedCall("/action/list", run, pacer)).data);
+      try { add((await pacedCall("/action/list?custom=true", run, pacer)).data); } catch (e) { if (e && (e.pause || e.stopped)) throw e; /* custom actions are optional */ }
       S.library = items;
       await store.setMeta("library", { at: Date.now(), items: [...items] });
       scheduleRender(true);
-    } catch (e) { /* keep the cached library, or none: modes stay unknown */ }
+    } catch (e) { if (e && e.pause) throw e; /* keep the cached library, or none: modes stay unknown */ }
   }
 
   // ---------- sync ----------
@@ -184,14 +217,11 @@
     else renderSync();
   }
 
-  async function listWindow(win, run) {
+  async function listWindow(win, run, pacer) {
     const q = `/sport/record/list?startTime=${encodeURIComponent(win.start)}&endTime=${encodeURIComponent(win.end)}&size=${SIZE()}`;
-    return Core.withRetry(async () => {
-      await gate.wait();
-      const data = (await call(q)).data;
-      if (data != null && !Array.isArray(data)) throw new Error("Invalid response");
-      return data || [];
-    }, retryOpts(run));
+    const data = (await pacedCall(q, run, pacer)).data;
+    if (data != null && !Array.isArray(data)) throw new Error("Invalid response");
+    return data || [];
   }
 
   function startSync() {
@@ -200,9 +230,30 @@
     S.syncPromise = (async () => {
       try { if (prev) await prev; } catch (e) { /* previous run is over */ }
       if (run !== S.runId) return;
-      await doSync(run);
+      await syncWithLock(run);
     })();
     return S.syncPromise;
+  }
+
+  // One tab syncs at a time (Web Locks). Other tabs show "Syncing in another tab", wait for the lock to be free, then
+  // re-read the cache and run their own (normally cheap: one list call, no details) sync. No Web Locks: just sync.
+  const LOCK = "myinnox1-ep-sync";
+  async function syncWithLock(run) {
+    const L = typeof navigator !== "undefined" && navigator.locks && typeof navigator.locks.request === "function" ? navigator.locks : null;
+    if (!L) return doSync(run);
+    let ran = false;
+    try {
+      await L.request(LOCK, { ifAvailable: true }, async (lock) => { if (!lock) return; ran = true; await doSync(run); });
+    } catch (e) { if (!ran) return doSync(run); return; }
+    if (ran || run !== S.runId) return;
+    setSync({ status: "elsewhere", msg: "" });
+    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+    S.lockAbort = ac;
+    try { await L.request(LOCK, ac ? { signal: ac.signal } : {}, async () => {}); } catch (e) { return; } // aborted on leave
+    if (run !== S.runId || !S.open) return;
+    try { S.workouts = await loadCache(S.store); } catch (e) { /* keep what we have */ }
+    scheduleRender(true);
+    startSync();
   }
 
   async function doSync(run) {
@@ -211,13 +262,16 @@
     const hasCache = () => S.workouts.size > 0;
     if (offline()) { setSync({ status: "offline", msg: "" }); return; }
     setSync({ status: "listing", done: 0, total: 0, failed: 0, msg: "" });
-    fetchLibrary(store);
+    const pacer = Core.makePacer();
     let enumerated;
     try {
+      // Library first and awaited, through the same pacer, so no more than one request is in flight before the pool.
+      await fetchLibrary(store, run, pacer);
       // One wide call lists the whole history (measured: size is honoured, newest first, unlimited depth).
-      enumerated = await Core.enumerateRecords({ size: SIZE(), fetchWindow: (w) => listWindow(w, run) });
+      enumerated = await Core.enumerateRecords({ size: SIZE(), fetchWindow: (w) => listWindow(w, run, pacer) });
     } catch (e) {
       if (stopped()) return;
+      if (e && e.pause) { setSync({ status: "paused", msg: "" }); return; }
       if (hasCache()) setSync({ status: offline() ? "offline" : "stale", msg: "" });
       else setSync({ status: "error", msg: e && e.message ? String(e.message) : "" });
       return;
@@ -227,6 +281,11 @@
     // Every successful full listing purges workouts that are no longer listed (deleted elsewhere); never from an
     // empty, failed (it throws before this point) or saturated (possibly cut) listing.
     const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated || !enumerated.rows.length ? null : enumerated.coveredFrom });
+    // N4: a purge of more than max(5, 20 %) of the cache in one go is suspicious (cap or partial answer): skip, log it.
+    if (diff.stale.length && !Core.purgeAllowed(diff.stale.length, cached.size)) {
+      store.setMeta("purgeSkipped", { at: Date.now(), stale: diff.stale.length, cached: cached.size, listed: enumerated.rows.length }).catch(() => {});
+      diff.stale = [];
+    }
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
     setSync({ status: "fetching", done: 0, total: diff.toFetch.length, failed: 0, msg: "", saturated: !!enumerated.saturated });
@@ -236,9 +295,9 @@
       if (stopped()) return;
       let r;
       try {
-        r = await Core.withRetry(() => call("/sport/record/detail?recordId=" + encodeURIComponent(row.recordId)), retryOpts(run));
+        r = await pacedCall("/sport/record/detail?recordId=" + encodeURIComponent(row.recordId), run, pacer);
       } catch (e) {
-        if (stopped()) return;
+        if (stopped() || (e && e.stopped)) return;
         lastErr = e && e.message ? String(e.message) : "";
         if (Core.isTransport(e)) e.pause = true; // 429 / 5xx / network: stop and let the user resume
         throw e;
@@ -376,9 +435,14 @@
     const hadFocus = box.contains(document.activeElement);
     box.textContent = "";
     box.classList.remove("is-error");
-    if (sy.status === "listing" || sy.status === "fetching") {
+    const wait = Math.ceil((Core.requestLog.cooldownUntil - Date.now()) / 1000);
+    const waitText = wait > 0 ? t("Waiting {s} s (rate limit)", { s: wait }) : "";
+    if (sy.status === "elsewhere") {
       box.hidden = false;
-      const text = sy.msg || (sy.status === "listing" ? t("Looking up your workouts…") : t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total }));
+      box.appendChild(el("p", "exp-sync-text", t("Syncing in another tab")));
+    } else if (sy.status === "listing" || sy.status === "fetching") {
+      box.hidden = false;
+      const text = waitText || sy.msg || (sy.status === "listing" ? t("Looking up your workouts…") : t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total }));
       box.appendChild(el("p", "exp-sync-text", text));
       if (sy.status === "fetching" && sy.total > 0) {
         const bar = el("div", "exp-progress");
@@ -394,6 +458,7 @@
       box.hidden = false; box.classList.add("is-error");
       box.appendChild(el("p", "exp-sync-text", t("Sync paused: {msg}", { msg: t("The server is busy or unreachable. Try again in a moment.") })));
       box.appendChild(el("p", "exp-sync-sub", t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total })));
+      if (waitText) box.appendChild(el("p", "exp-sync-sub", waitText));
       const b = el("button", "secondary", t("Resume")); b.type = "button";
       b.addEventListener("click", () => { startSync(); });
       box.appendChild(b);
@@ -550,7 +615,7 @@
     let message = "";
     const st = S.sync.status;
     if (!s.hasAny) {
-      if (syncing || st === "idle") message = t("Loading…");
+      if (syncing || st === "idle" || st === "elsewhere") message = t("Loading…");
       else if (st === "done") message = t("No history for this exercise yet");
       else if (st === "offline" || st === "stale") message = S.workouts.size ? t("No history for this exercise yet") : t("No history is saved on this device yet.");
       else message = ""; // error / paused: the banner above says what happened
@@ -595,6 +660,7 @@
   }
 
   function shutdown() {
+    if (S.lockAbort) { try { S.lockAbort.abort(); } catch (e) { /* done */ } S.lockAbort = null; }
     S.runId++;                 // stops the sync: finished requests are still saved, the rest resumes next time
     S.open = false;
     clearTimeout(S.renderTimer); S.renderTimer = 0;

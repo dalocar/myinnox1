@@ -602,5 +602,7 @@
     "The server is busy or unreachable. Try again in a moment.": "Il server è occupato o non raggiungibile. Riprova tra un momento.",
     "{n} session": "{n} sessione",
     "{n} sessions": "{n} sessioni",
+    "Waiting {s} s (rate limit)": "Attesa di {s} s (limite di richieste)",
+    "Syncing in another tab": "Sincronizzazione in un’altra scheda",
   },
 };

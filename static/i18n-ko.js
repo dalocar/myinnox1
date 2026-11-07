@@ -605,5 +605,7 @@
     "The server is busy or unreachable. Try again in a moment.": "서버가 바쁘거나 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
     "{n} session": "{n}회",
     "{n} sessions": "{n}회",
+    "Waiting {s} s (rate limit)": "{s}초 대기 중(요청 제한)",
+    "Syncing in another tab": "다른 탭에서 동기화 중",
   },
 };

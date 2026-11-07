@@ -606,5 +606,7 @@
     "The server is busy or unreachable. Try again in a moment.": "サーバーが混み合っているか、接続できません。しばらくしてからもう一度お試しください。",
     "{n} session": "{n}回",
     "{n} sessions": "{n}回",
+    "Waiting {s} s (rate limit)": "{s}秒待機中（リクエスト制限）",
+    "Syncing in another tab": "別のタブで同期中",
   },
 };

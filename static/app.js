@@ -33,6 +33,10 @@ function toast(msg, isErr) {
 }
 
 async function api(path, opts = {}) {
+  // Every request is counted in the shared sliding log the Exercise Progress sync paces itself against (Cloudflare
+  // rule: 60 per 10 s per IP). Paced sync calls record themselves when they get their slot (`paced: true`).
+  if (opts.paced) { opts = Object.assign({}, opts); delete opts.paced; }
+  else if (window.ExerciseProgressCore && ExerciseProgressCore.requestLog) ExerciseProgressCore.requestLog.record();
   const token = store.get(TOKEN_KEY);
   // FormData must go without a Content-Type so the browser adds the multipart boundary.
   const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;

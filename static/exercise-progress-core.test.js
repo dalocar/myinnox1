@@ -348,8 +348,13 @@ test("every Exercise Progress string is translated in all seven languages", () =
   const keys = new Set([...ui.matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"')));
   ["3M", "6M", "1Y", "All", "Last 3 months", "Last 6 months", "Last year", "All time"].forEach((k) => keys.add(k));
   keys.add(JSON.parse('"' + /t\("(View progress of \{name\})"/.exec(rd("activity-report.js"))[1] + '"'));
+  // Phase 2/3: the Exercises list (direct t("...") calls plus the ones passed as variables) and the editor icon in app.js
+  for (const f of ["exercise-list.js", "activity-dashboard.js", "app.js"]) {
+    for (const m of rd(f).matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)) if (/Exercise|exercise|Progress for|Sort by|session|Best|Search every/.test(m[1])) keys.add(JSON.parse('"' + m[1] + '"'));
+  }
+  ["Most recent", "Most sessions", "Name A–Z", "Up {v} since first", "Down {v} since first", "{n} session", "{n} sessions", "{n} reps", "Progress for {name}"].forEach((k) => keys.add(k));
   assert.ok(keys.size > 30);
-  const es = ["i18n.js", "exercise-progress.js", "activity-report.js", "activity-explorer.js"].map(rd).join("\n");
+  const es = ["i18n.js", "exercise-progress.js", "exercise-list.js", "activity-report.js", "activity-explorer.js"].map(rd).join("\n");
   const missing = [];
   for (const k of keys) if (!es.includes(JSON.stringify(k) + ":")) missing.push("es: " + k);
   for (const l of ["de", "fr", "it", "ja", "ko", "zh"]) {

@@ -58,7 +58,13 @@
     store: null, storeName: "", workouts: new Map(), library: null,
     sync: { status: "idle", done: 0, total: 0, failed: 0, msg: "" },
     runId: 0, syncPromise: null, chart: null, renderTimer: 0, announce: "",
+    listener: null,   // the Exercises list (Phase 2): {data(now), sync()}; keeps the sync alive while it is on screen
+    bg: false,        // the running sync was started by the background warm-up (Phase 3)
+    overlay: false,   // the screen is shown above the page (program editor) instead of inside the History tab
+    syncedAt: 0,
   };
+  // The foreground owner of the sync is either the progress screen or the list. The warm-up runs with neither.
+  const active = () => S.open || !!S.listener;
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const today = () => Core.localISO(new Date());
   const unit = () => (window.Units ? Units.get() : 0);
@@ -169,7 +175,7 @@
   function startTicker() {
     if (ticker) return;
     ticker = setInterval(() => {
-      if (!S.open || Core.requestLog.cooldownUntil <= Date.now()) { clearInterval(ticker); ticker = 0; }
+      if (!active() || Core.requestLog.cooldownUntil <= Date.now()) { clearInterval(ticker); ticker = 0; }
       renderSync();
     }, 1000);
   }
@@ -197,14 +203,15 @@
   async function fetchLibrary(store, run, pacer) {
     const cached = await store.getMeta("library");
     if (cached && Array.isArray(cached.items)) S.library = new Map(cached.items);
-    if (cached && Date.now() - cached.at < 24 * 3600 * 1000) return;
+    // v2 adds the picture; the names come back in the UI language, so a language switch refreshes them too.
+    if (cached && cached.v === 2 && cached.lang === LANG() && Date.now() - cached.at < 24 * 3600 * 1000) return;
     try {
       const items = new Map();
-      const add = (arr) => { for (const a of Array.isArray(arr) ? arr : []) if (a && a.id != null) items.set(String(a.id), { sideNum: a.sideNum == null ? null : Number(a.sideNum), countType: a.countType == null ? null : Number(a.countType), name: a.name == null ? "" : String(a.name) }); };
+      const add = (arr) => { for (const a of Array.isArray(arr) ? arr : []) if (a && a.id != null) items.set(String(a.id), { sideNum: a.sideNum == null ? null : Number(a.sideNum), countType: a.countType == null ? null : Number(a.countType), name: a.name == null ? "" : String(a.name), pic: typeof a.picUrl === "string" ? a.picUrl : "" }); };
       add((await pacedCall("/action/list", run, pacer)).data);
       try { add((await pacedCall("/action/list?custom=true", run, pacer)).data); } catch (e) { if (e && (e.pause || e.stopped)) throw e; /* custom actions are optional */ }
       S.library = items;
-      await store.setMeta("library", { at: Date.now(), items: [...items] });
+      await store.setMeta("library", { v: 2, lang: LANG(), at: Date.now(), items: [...items] });
       scheduleRender(true);
     } catch (e) { if (e && e.pause) throw e; /* keep the cached library, or none: modes stay unknown */ }
   }
@@ -231,7 +238,7 @@
     S.syncPromise = (async () => {
       try { if (prev) await prev; } catch (e) { /* previous run is over */ }
       if (run !== S.runId) return;
-      await syncWithLock(run);
+      try { await syncWithLock(run); } finally { if (run === S.runId) S.bg = false; }
     })();
     return S.syncPromise;
   }
@@ -247,17 +254,18 @@
       await L.request(LOCK, { ifAvailable: true }, async (lock) => { if (!lock) return; ran = true; await doSync(run); });
     } catch (e) { if (!ran) return doSync(run); return; }
     if (ran || run !== S.runId) return;
+    if (S.bg) return;      // another tab is already syncing: the warm-up has nothing to do
     setSync({ status: "elsewhere", msg: "" });
     const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
     S.lockAbort = ac;
     // While the other tab syncs, re-read the cache every 5 s so this view fills in too (cheap, local).
     const refresh = setInterval(async () => {
-      if (run !== S.runId || !S.open) return clearInterval(refresh);
+      if (run !== S.runId || !active()) return clearInterval(refresh);
       try { S.workouts = await loadCache(S.store); scheduleRender(false); } catch (e) { /* ignore */ }
     }, 5000);
     try { await L.request(LOCK, ac ? { signal: ac.signal } : {}, async () => {}); } catch (e) { clearInterval(refresh); return; } // aborted on leave
     clearInterval(refresh);
-    if (run !== S.runId || !S.open) return;
+    if (run !== S.runId || !active()) return;
     try { S.workouts = await loadCache(S.store); } catch (e) { /* keep what we have */ }
     scheduleRender(true);
     startSync();
@@ -301,6 +309,8 @@
     }
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
+    // The warm-up is incremental only: a big backlog (a long absence, a cleared cache) stays a user-started sync.
+    if (S.bg && diff.toFetch.length > Core.WARM_MAX_FETCH) { warmLog("too-many", { missing: diff.toFetch.length }); setSync({ status: "idle", msg: "" }); return; }
     setSync({ status: "fetching", done: 0, total: diff.toFetch.length, failed: 0, msg: "", saturated: !!enumerated.saturated });
     let lastErr = "";
     const res = await Core.runPool(diff.toFetch, async (row) => {
@@ -332,7 +342,11 @@
     if (stopped()) return;
     S.sync.failed = res.failed;
     if (res.paused) { setSync({ status: "paused", msg: lastErr }); return; }
-    await store.setMeta("sync", { complete: res.failed === 0 && !enumerated.saturated, at: Date.now() });
+    const complete = res.failed === 0 && !enumerated.saturated;
+    await store.setMeta("sync", { complete, at: Date.now() });
+    // Sticky: this device has completed a full sync at least once (the warm-up's only precondition).
+    if (complete && !(await store.getMeta("firstFull").catch(() => null))) await store.setMeta("firstFull", { at: Date.now() }).catch(() => {});
+    S.syncedAt = Date.now();
     S.announce = "sync";
     setSync({ status: "done", msg: "" });
     scheduleRender(true);
@@ -381,6 +395,7 @@
   // ---------- rendering ----------
   let nodes = null;
   function scheduleRender(now) {
+    if (S.listener && S.listener.data) S.listener.data(now);
     if (!S.open) return;
     if (now) { clearTimeout(S.renderTimer); S.renderTimer = 0; renderData(); return; }
     if (S.renderTimer) return;
@@ -389,10 +404,24 @@
   let syncTimer = 0;
   function renderSyncSoon() { if (syncTimer) return; syncTimer = setTimeout(() => { syncTimer = 0; renderSync(); }, 150); }
 
+  // The screen lives in #ex-progress (History tab). Opened from the program editor it lives in #ex-progress-overlay, a
+  // fixed layer on top of the page, so the editor (and its unsaved edits) is never hidden, re-rendered or torn down.
+  const rootEl = () => $(S.overlay ? "ex-progress-overlay" : "ex-progress");
+  function overlayRoot() {
+    let r = $("ex-progress-overlay");
+    if (!r) {
+      r = document.createElement("div");
+      r.id = "ex-progress-overlay"; r.hidden = true;
+      r.setAttribute("role", "dialog"); r.setAttribute("aria-modal", "true");
+      document.body.appendChild(r);
+    }
+    return r;
+  }
+
   function build() {
-    const root = $("ex-progress");
+    const root = rootEl();
     root.textContent = "";
-    root.className = "exp-root";
+    root.className = "exp-root" + (S.overlay ? " exp-overlay" : "");
     root.setAttribute("aria-labelledby", "exp-title");
     const bar = el("div", "exp-bar");
     const back = el("button", "exp-back secondary");
@@ -449,8 +478,8 @@
   // Screen-reader announcements for the sync, throttled: cooldown start, 5 s left, resume after the cooldown, and
   // status changes (paused, other tab, done with problems). The visual banner itself is not a live region.
   const ann = { cd: "", status: "" };
-  function announceSync(sy, wait, waitText) {
-    if (!nodes || !nodes.syncLive) return;
+  function announceSync(n, sy, wait, waitText) {
+    if (!n || !n.syncLive) return;
     let msg = "";
     if (wait > 0) {
       if (!ann.cd) { ann.cd = "start"; msg = waitText; }
@@ -467,18 +496,23 @@
       else if (sy.status === "elsewhere") msg = t("Syncing in another tab");
       else if (sy.status === "error") msg = t("Could not load your workout history");
     }
-    if (msg) nodes.syncLive.textContent = msg;
+    if (msg) n.syncLive.textContent = msg;
   }
 
   function renderSync() {
+    if (S.listener && S.listener.sync) S.listener.sync();
     if (!nodes || !S.open) return;
-    const sy = S.sync, box = nodes.syncBox;
+    paintSync(nodes);
+  }
+  // Paints the sync banner into `n` ({syncBox, syncLive, title}); used by this screen and by the Exercises list.
+  function paintSync(n) {
+    const sy = S.sync, box = n.syncBox;
     const hadFocus = box.contains(document.activeElement);
     box.textContent = "";
     box.classList.remove("is-error");
     const wait = Math.ceil((Core.requestLog.cooldownUntil - Date.now()) / 1000);
     const waitText = wait > 0 ? t("Waiting {s} s (rate limit)", { s: wait }) : "";
-    announceSync(sy, wait, waitText);
+    announceSync(n, sy, wait, waitText);
     if (sy.status === "elsewhere") {
       box.hidden = false;
       box.appendChild(el("p", "exp-sync-text", t("Syncing in another tab")));
@@ -528,7 +562,7 @@
       box.hidden = true;
     }
     if (sy.status !== "error") box.removeAttribute("role");
-    if (hadFocus && !box.contains(document.activeElement)) { const b = box.querySelector("button"); (b || nodes.title).focus({ preventScroll: true }); }
+    if (hadFocus && !box.contains(document.activeElement)) { const b = box.querySelector("button"); (b || n.title).focus({ preventScroll: true }); }
   }
 
   function stat(label, value, sub) {
@@ -692,7 +726,8 @@
   }
 
   // ---------- open / close ----------
-  const SIBLINGS = ["act-dashboard", "act-medals", "act-explorer", "act-report"];
+  const SIBLINGS = ["act-dashboard", "act-medals", "act-explorer", "act-report", "ex-list"];
+  let overlayState = null; // {y, inert}
   let observer = null;
 
   function onKey(e) {
@@ -711,6 +746,16 @@
     destroyChart();
     document.removeEventListener("keydown", onKey);
     if (observer) { observer.disconnect(); observer = null; }
+    releaseOverlay();
+  }
+  function releaseOverlay() {
+    if (!S.overlay) return;
+    S.overlay = false;
+    const app = $("app");
+    if (app) app.removeAttribute("inert");
+    const r = $("ex-progress-overlay");
+    if (r) { r.hidden = true; r.textContent = ""; }
+    document.body.classList.remove("exp-overlay-open");
   }
   function close() {
     shutdown();
@@ -724,14 +769,22 @@
     if (typeof cb === "function") cb();
   }
 
+  // open(actionId, {name, onBack, overlay}). overlay: true shows the screen above the page (used by the program editor).
   async function open(actionId, opts) {
     opts = opts || {};
-    const root = $("ex-progress");
+    if (S.open) shutdown();           // opened again from elsewhere: the old screen's listeners go first
+    S.overlay = !!opts.overlay;
+    const root = S.overlay ? overlayRoot() : $("ex-progress");
     if (!root) return;
     S.actionId = actionId; S.name = opts.name ? String(opts.name) : ""; S.onBack = opts.onBack || null;
     S.range = Core.DEFAULT_RANGE; S.open = true; S.announce = "";
+    S.bg = false;                     // a running warm-up sync simply carries on in the foreground (see startSync)
     S.sync = { status: "idle", done: 0, total: 0, failed: 0, msg: "" };
-    SIBLINGS.forEach((id) => { const n = $(id); if (n) n.hidden = true; });
+    if (S.overlay) {
+      const app = $("app");
+      if (app) app.setAttribute("inert", "");
+      document.body.classList.add("exp-overlay-open");
+    } else SIBLINGS.forEach((id) => { const n = $(id); if (n) n.hidden = true; });
     root.hidden = false;
     document.removeEventListener("keydown", onKey);
     document.addEventListener("keydown", onKey);
@@ -742,17 +795,130 @@
       observer.observe(root, { attributes: true, attributeFilter: ["hidden"] });
     }
     render(true);
-    try { root.scrollIntoView({ block: "start" }); } catch (e) { /* ignore */ }
+    if (S.overlay) root.scrollTop = 0;
+    else try { root.scrollIntoView({ block: "start" }); } catch (e) { /* ignore */ }
     let store;
     try { store = await getStore(); } catch (e) { return; }
     if (!S.open) return;
-    try { S.workouts = await loadCache(store); } catch (e) { S.workouts = new Map(); }
-    const lib = await store.getMeta("library").catch(() => null);
-    if (lib && Array.isArray(lib.items)) S.library = new Map(lib.items);
+    await loadLocal(store);
     if (!S.open) return;
     scheduleRender(true);
     startSync();
   }
+  async function loadLocal(store) {
+    try { S.workouts = await loadCache(store); } catch (e) { S.workouts = new Map(); }
+    const lib = await store.getMeta("library").catch(() => null);
+    if (lib && Array.isArray(lib.items)) S.library = new Map(lib.items);
+  }
+
+  // ---------- Exercises list (Phase 2) ----------
+  // The list is a second foreground owner of the SAME cache and sync (one store, one pacer, one Web Lock). attachList loads
+  // the local data, tells the list to paint, and starts or resumes the sync unless one finished less than a minute ago.
+  async function attachList(listener) {
+    S.listener = listener; S.bg = false;
+    let store;
+    try { store = await getStore(); } catch (e) { return; }
+    if (S.listener !== listener) return;
+    await loadLocal(store);
+    if (S.listener !== listener) return;
+    const fresh = S.sync.status === "done" && Date.now() - S.syncedAt < 60000;
+    if (!fresh && !S.open) S.sync = { status: "idle", done: 0, total: 0, failed: 0, msg: "" };
+    scheduleRender(true);
+    if (listener.sync) listener.sync();
+    if (!fresh) startSync();
+  }
+  function stopSync() {
+    if (S.lockAbort) { try { S.lockAbort.abort(); } catch (e) { /* done */ } S.lockAbort = null; }
+    S.runId++;
+  }
+  function detachList(listener) {
+    if (listener && S.listener !== listener) return;
+    S.listener = null;
+    if (!S.open) stopSync();
+  }
+  // What the list needs to paint: the cached workouts and the library join (names in the UI language, modes, pictures).
+  function view() {
+    const lib = S.library;
+    return {
+      index: [...S.workouts.values()], sync: S.sync, hasLibrary: !!lib,
+      modeFor: (id) => modeFor(id),
+      nameFor: (id) => { const e = lib && lib.get(String(id)); return e && e.name ? e.name : ""; },
+      picFor: (id) => { const e = lib && lib.get(String(id)); return e && e.pic ? e.pic : ""; },
+    };
+  }
+
+  // ---------- Background warm-up (Phase 3) ----------
+  // Incremental only: runs when this device already completed a full sync, once the page is idle, at most once per 30
+  // minutes per account (meta "warm", or the last sync), never offline / hidden / with saveData / while a screen owns the
+  // sync. It reuses startSync() (pacer, cooldown, Web Lock, purge rules); there is no UI, a cooldown stays quiet.
+  const WARM = { token: 0, timer: 0, idle: 0, off: [], log: [] };
+  const num0 = (v, d) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 0 ? n : d; };
+  const warmEvery = () => num0(window.__EP_WARM_EVERY, Core.WARM_EVERY_MS);    // QA hook: shrink the 30 minute gate
+  const warmDelay = () => num0(window.__EP_WARM_DELAY, Core.WARM_DELAY_MS);    // QA hook: shrink the idle wait
+  function warmLog(reason, extra) {
+    WARM.log.push(Object.assign({ at: Date.now(), reason }, extra || {}));
+    if (WARM.log.length > 50) WARM.log.shift();
+  }
+  function warmCancel() {
+    WARM.token++;
+    clearTimeout(WARM.timer); WARM.timer = 0;
+    if (WARM.idle && typeof cancelIdleCallback === "function") { try { cancelIdleCallback(WARM.idle); } catch (e) { /* gone */ } }
+    WARM.idle = 0;
+    WARM.off.splice(0).forEach((f) => f());
+  }
+  function warmIdle(fn) {
+    if (typeof requestIdleCallback === "function") WARM.idle = requestIdleCallback(() => { WARM.idle = 0; fn(); }, { timeout: 10000 });
+    else WARM.timer = setTimeout(() => { WARM.timer = 0; fn(); }, 1000);
+  }
+  function warmWait(target, ev, tok, ok) {
+    const h = () => {
+      if (!ok()) return;
+      target.removeEventListener(ev, h); WARM.off = WARM.off.filter((f) => f !== off);
+      if (tok === WARM.token) warmIdle(() => warmTry(tok));
+    };
+    const off = () => target.removeEventListener(ev, h);
+    target.addEventListener(ev, h); WARM.off.push(off);
+  }
+  function warmStart() {
+    warmCancel();
+    if (!accountEmail()) return;
+    const tok = WARM.token;
+    WARM.timer = setTimeout(() => { WARM.timer = 0; warmIdle(() => warmTry(tok)); }, warmDelay());
+  }
+  const loggedIn = () => { try { return !!localStorage.getItem("innodigym_token") && !!accountEmail(); } catch (e) { return false; } };
+  async function warmTry(tok) {
+    if (tok !== WARM.token) return;
+    try { if (window.__EP_READY) await window.__EP_READY; } catch (e) { /* QA hook only */ }
+    if (tok !== WARM.token) return;
+    let store, full = false, last = null;
+    try {
+      store = await getStore();
+      const [first, sy, w] = await Promise.all([store.getMeta("firstFull"), store.getMeta("sync"), store.getMeta("warm")]);
+      full = !!(first || (sy && sy.complete));
+      last = Math.max(Number(w && w.at) || 0, Number(sy && sy.at) || 0) || null;
+    } catch (e) { warmLog("no-store"); return; }
+    if (tok !== WARM.token) return;
+    const d = Core.warmupDecision({
+      loggedIn: loggedIn(), hasFullSync: full, lastRunAt: last, now: Date.now(), everyMs: warmEvery(),
+      online: !offline(), hidden: typeof document !== "undefined" && document.visibilityState === "hidden",
+      saveData: !!(navigator.connection && navigator.connection.saveData), foreground: active(),
+      cooldownLeft: Core.requestLog.cooldownUntil - Date.now(),
+    });
+    warmLog(d.reason);
+    if (!d.run) {
+      if (d.wait === "visible") warmWait(document, "visibilitychange", tok, () => document.visibilityState !== "hidden");
+      else if (d.wait === "online") warmWait(window, "online", tok, () => !offline());
+      else if (d.wait === "cooldown") WARM.timer = setTimeout(() => { WARM.timer = 0; warmTry(tok); }, d.ms + 1000);
+      return;
+    }
+    await store.setMeta("warm", { at: Date.now() }).catch(() => {});
+    await loadLocal(store);
+    if (tok !== WARM.token || active()) { warmLog("yielded"); return; }
+    S.bg = true;
+    warmLog("start");
+    startSync();
+  }
+  function warmStop() { warmCancel(); if (S.bg) { S.bg = false; stopSync(); } }
 
   // ---------- lifecycle hooks used by app.js ----------
   async function forgetWorkout(recordId) {
@@ -768,6 +934,7 @@
 
   // Logout: stop everything and delete every progress database of this browser (all accounts).
   async function clearAll() {
+    warmCancel(); S.bg = false;
     S.runId++;
     if (S.store) { S.store.close(); S.store = null; }
     S.workouts = new Map(); S.library = null; S.storeName = "";
@@ -801,5 +968,12 @@
   if (window.Units) Units.onChange(rerender);
   document.addEventListener("themechange", () => { if (S.open && nodes) renderData(); });
 
-  window.ExerciseProgressUI = { open, close, forgetWorkout, clearAll, _state: S };
+  if (loggedIn()) warmStart(); // app load with a valid session; login() calls ExerciseProgressUI.warmUp.start()
+
+  window.ExerciseProgressUI = {
+    open, close, forgetWorkout, clearAll, _state: S,
+    isOpen: () => S.open,
+    attachList, detachList, view, paintSync, startSync, resetAnnounce: () => { ann.cd = ""; ann.status = ""; },
+    warmUp: { start: warmStart, stop: warmStop, log: () => WARM.log.slice(), running: () => S.bg },
+  };
 })();

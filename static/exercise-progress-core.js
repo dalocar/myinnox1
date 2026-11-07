@@ -16,6 +16,7 @@
   const LIST_SIZE = 500;                  // `size` requested from /sport/record/list
   const KNOWN_CAPS = [50];                // page sizes the app has used; a window with exactly this many rows may be truncated
   const MIN_YEAR = 2015;                  // never list before this year
+  const SATURATION_FLOOR = 20;           // a one-day window is only reported as cut when it holds at least this many rows
   const MAX_EMPTY_WINDOWS = 2;            // stop walking back after this many empty 12-month windows in a row
   const CONCURRENCY = 3;
   const MAX_RETRIES = 4;                  // retries after the first attempt: waits 1, 2, 4, 8 s
@@ -279,7 +280,7 @@
       maxSeen = Math.max(maxSeen, list.length);
       const full = isFull(list.length, size, maxSeen);
       const halves = full ? bisectWindow(win) : null;
-      if (!halves) { take(list); if (full && list.length >= 2) saturated = true; return list; } // a one-day window that is still full: history may be cut
+      if (!halves) { take(list); if (full && list.length >= SATURATION_FLOOR) saturated = true; return list; } // a one-day window that is still full: history may be cut
       take(list); // keep what we got; the halves fill in the rest
       const a = await listWin(halves[0]);
       const b = await listWin(halves[1]);
@@ -317,7 +318,8 @@
     }
     toFetch.sort((a, b) => (a.startTime < b.startTime ? 1 : a.startTime > b.startTime ? -1 : b.recordId - a.recordId));
     const stale = [];
-    if (o.coveredFrom && have instanceof Map) {
+    // Never purge from an empty listing (a 200 with [] must not wipe the cache).
+    if (o.coveredFrom && have instanceof Map && listed.size > 0) {
       for (const [id, st] of have) if (!listed.has(id) && typeof st === "string" && st.slice(0, 10) >= o.coveredFrom) stale.push(id);
     }
     return { toFetch, stale };
@@ -438,7 +440,7 @@
   const dbName = (email) => DB_PREFIX + accountKey(email);
 
   return {
-    SCHEMA, RANGES, DEFAULT_RANGE, LIST_SIZE, KNOWN_CAPS, MIN_YEAR, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
+    SCHEMA, SATURATION_FLOOR, RANGES, DEFAULT_RANGE, LIST_SIZE, KNOWN_CAPS, MIN_YEAR, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
     parseDate, localISO, dayNumber, fromDayNumber, addDays, addMonths, parseStart, stamp,
     summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions,
     makeWindow, firstWindow, nextWindow, bisectWindow, isFull, enumerateRecords, diffIds,

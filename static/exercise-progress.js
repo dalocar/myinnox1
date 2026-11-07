@@ -35,8 +35,9 @@
     "Data table": "Tabla de datos",
     "Progress data for {name}": "Datos de progreso de {name}",
     "{name}: {metric}. Line chart. {summary}": "{name}: {metric}. Gráfico de líneas. {summary}",
-    "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "Último {latest}, mejor marca {best} el {date}, {n} sesiones, cambio desde el primero {change}",
+    "Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}": "Último {latest}, mejor marca {best} el {date}, {sessions}, cambio desde el primero {change}",
     "Progress summary": "Resumen del progreso",
+    "{n} session": "{n} sesión", "{n} sessions": "{n} sesiones",
     "{n} in this range": "{n} en este periodo",
     "No history is saved on this device yet.": "Todavía no hay historial guardado en este dispositivo.",
     "You are offline, and no history is saved on this device yet.": "Sin conexión, y aún no hay historial guardado en este dispositivo.",
@@ -232,7 +233,7 @@
     if (stopped()) return;
     const cached = new Map([...S.workouts].map(([id, w]) => [id, w.startTime]));
     // Purge only from windows that were listed completely (never from a saturated, possibly cut listing).
-    const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated ? null : enumerated.coveredFrom });
+    const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated || !enumerated.rows.length ? null : enumerated.coveredFrom });
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
     setSync({ status: "fetching", done: 0, total: diff.toFetch.length, failed: 0, msg: "", saturated: !!enumerated.saturated });
@@ -307,8 +308,8 @@
   }
   function summaryText(s) {
     if (!s.summary) return "";
-    return t("Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}", {
-      latest: val(s, s.summary.latest.value), best: val(s, s.summary.best.value), date: fmtDate(s.summary.best.date), n: s.summary.sessions, change: changeText(s),
+    return t("Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}", {
+      latest: val(s, s.summary.latest.value), best: val(s, s.summary.best.value), date: fmtDate(s.summary.best.date), sessions: t(s.summary.sessions === 1 ? "{n} session" : "{n} sessions", { n: s.summary.sessions }), change: changeText(s),
     });
   }
 
@@ -408,7 +409,7 @@
       box.hidden = false; box.classList.add("is-error");
       box.setAttribute("role", "alert");
       box.appendChild(el("p", "exp-sync-text", t("Could not load your workout history")));
-      if (sy.msg) box.appendChild(el("p", "exp-sync-sub", sy.msg));
+      box.appendChild(el("p", "exp-sync-sub", t("The server is busy or unreachable. Try again in a moment.")));
       const b = el("button", "secondary", t("Retry")); b.type = "button";
       b.addEventListener("click", () => { startSync(); });
       box.appendChild(b);

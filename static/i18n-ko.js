@@ -595,7 +595,7 @@
     "Data table": "데이터 표",
     "Progress data for {name}": "{name}의 진행 데이터",
     "{name}: {metric}. Line chart. {summary}": "{name}: {metric}. 꺾은선형 차트. {summary}",
-    "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "최근 {latest}, 개인 최고 {best}({date}), {n}회, 첫 기록 대비 변화 {change}",
+    "Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}": "최근 {latest}, 개인 최고 {best}({date}), {sessions}, 첫 기록 대비 변화 {change}",
     "Progress summary": "진행 요약",
     "Syncing history": "기록 동기화 중",
     "{n} in this range": "이 기간 {n}회",
@@ -603,5 +603,7 @@
     "You are offline, and no history is saved on this device yet.": "오프라인이며 이 기기에는 아직 저장된 기록이 없습니다.",
     "Some history may be missing: the server limits how many workouts it returns.": "일부 기록이 누락되었을 수 있습니다. 서버가 반환하는 트레이닝 수에 제한이 있습니다.",
     "The server is busy or unreachable. Try again in a moment.": "서버가 바쁘거나 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
+    "{n} session": "{n}회",
+    "{n} sessions": "{n}회",
   },
 };

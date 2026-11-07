@@ -595,7 +595,7 @@
     "Data table": "数据表",
     "Progress data for {name}": "{name}的进度数据",
     "{name}: {metric}. Line chart. {summary}": "{name}：{metric}。折线图。{summary}",
-    "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "最新 {latest}，个人最佳 {best}（{date}），共 {n} 次训练，相比首次的变化 {change}",
+    "Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}": "最新 {latest}，个人最佳 {best}（{date}），{sessions}，相比首次的变化 {change}",
     "Progress summary": "进度摘要",
     "Syncing history": "正在同步历史记录",
     "{n} in this range": "此时间范围内 {n} 次",
@@ -603,5 +603,7 @@
     "You are offline, and no history is saved on this device yet.": "你处于离线状态，且此设备上还没有保存的历史记录。",
     "Some history may be missing: the server limits how many workouts it returns.": "历史记录可能不完整：服务器限制了返回的训练数量。",
     "The server is busy or unreachable. Try again in a moment.": "服务器繁忙或无法连接。请稍后再试。",
+    "{n} session": "{n} 次训练",
+    "{n} sessions": "{n} 次训练",
   },
 };

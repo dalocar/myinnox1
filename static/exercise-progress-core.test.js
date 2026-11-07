@@ -423,13 +423,27 @@ test("unknown server caps are detected: a window as full as the fullest one seen
   assert.ok(C.isFull(7, 500, 7)); assert.ok(!C.isFull(6, 500, 7)); assert.ok(!C.isFull(1, 500, 1));
 });
 test("a single-day window that is still full marks the listing saturated (never complete)", async () => {
-  const rows = Array.from({ length: 20 }, (_, i) => ({ sportRecordId: 1 + i, startTime: "2026-10-01 08:00:00" })); // 20 workouts on one day
-  const res = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end).slice(0, 5) });
+  const rows = Array.from({ length: 30 }, (_, i) => ({ sportRecordId: 1 + i, startTime: "2026-10-01 08:00:00" })); // 30 workouts on one day
+  const res = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end).slice(0, 25) });
   assert.equal(res.saturated, true);
-  assert.equal(res.rows.length, 5);
+  assert.equal(res.rows.length, 25);
 });
 test("small accounts do not trigger needless bisecting or false saturation", async () => {
   const srv = fakeServer(["2026-10-01"], 500);
   const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
   assert.equal(res.saturated, false); assert.equal(srv.calls.length, 3);
+});
+
+test("tiny histories never look saturated: two same-day workouts are real data, the sync can complete and purge", async () => {
+  const rows = [{ sportRecordId: 1, startTime: "2026-10-20 07:15:00" }, { sportRecordId: 2, startTime: "2026-10-20 18:40:00" }];
+  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end) });
+  assert.equal(res.saturated, false); assert.equal(res.rows.length, 2);
+  const d = C.diffIds(res.rows, new Map([[1, "2026-10-20 07:15:00"], [9, "2026-10-21 08:00:00"]]), { coveredFrom: res.coveredFrom });
+  assert.deepEqual(d.stale, [9]); // purge-eligible
+  assert.equal(C.SATURATION_FLOOR, 20);
+});
+test("an empty listing never makes anything stale (a 200 with [] must not wipe the cache)", () => {
+  const cache = new Map([[1, "2026-01-01 08:00:00"], [2, "2025-06-01 08:00:00"]]);
+  assert.deepEqual(C.diffIds([], cache, { coveredFrom: "2024-01-01" }).stale, []);
+  assert.deepEqual(C.diffIds(null, cache, { coveredFrom: "2024-01-01" }).stale, []);
 });

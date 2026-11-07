@@ -22,7 +22,7 @@
 
 .exp-ranges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .exp-ranges[hidden] { display: none; }
-.exp-range.secondary { min-height: 44px; padding: 0 6px; font-weight: 600; }
+.exp-range.secondary { min-height: 44px; padding: 0 4px; font-weight: 600; white-space: nowrap; min-width: 0; }
 .exp-range[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--text); }
 
 .exp-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

@@ -592,7 +592,7 @@
     "Data table": "Tableau de données",
     "Progress data for {name}": "Données de progression pour {name}",
     "{name}: {metric}. Line chart. {summary}": "{name} : {metric}. Graphique en courbe. {summary}",
-    "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "Dernier {latest}, record personnel {best} le {date}, {n} séances, évolution depuis la première {change}",
+    "Latest {latest}, personal best {best} on {date}, {sessions}, change since first {change}": "Dernier {latest}, record personnel {best} le {date}, {sessions}, évolution depuis la première {change}",
     "Progress summary": "Résumé de la progression",
     "Syncing history": "Synchronisation de l’historique",
     "{n} in this range": "{n} sur cette période",
@@ -600,5 +600,7 @@
     "You are offline, and no history is saved on this device yet.": "Tu es hors ligne, et aucun historique n’est encore enregistré sur cet appareil.",
     "Some history may be missing: the server limits how many workouts it returns.": "Il manque peut-être une partie de l’historique : le serveur limite le nombre de séances renvoyées.",
     "The server is busy or unreachable. Try again in a moment.": "Le serveur est occupé ou injoignable. Réessaie dans un instant.",
+    "{n} session": "{n} séance",
+    "{n} sessions": "{n} séances",
   },
 };

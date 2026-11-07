@@ -6,7 +6,9 @@
 //        client's page size set equal, stub flags size=N&cap=N) exercises the bisect fallback; a cap the client does not know
 //        about is NOT detected (the real API has no cap).
 //   GET /ep/sport/record/detail?recordId=   full workout with extData; unknown id -> HTTP 200 envelope code 500
-//   GET /ep/action/list[?custom=true]        library (sideNum / countType) or the custom actions
+//   GET /ep/action/list[?custom=true][&languageId=es]   library (sideNum / countType) or the custom actions (Spanish names for es)
+//   GET /ep/course/custom/list, /ep/course/custom/detail   one program with weighted and weightless steps (editor icon, Phase 3)
+//   GET /ep/_dump                            raw workouts.json (admin: not counted, no latency, no failure rules; used by the stub's #synced seeding)
 // Failure injection (HTTP-level, shared by every /ep/ data route unless limited):
 //   env EP_FAIL="429:5:detail:2"  or  GET /ep/_fail?status=429&n=5&route=detail&retryAfter=2
 //     status  HTTP status to answer (429, 500, 502, 503, ...), or "envelope" for HTTP 200 with code 500
@@ -42,7 +44,7 @@ function reset() { wafReset(); state.rules = []; state.total = 0; state.byRoute 
 const parseWaf = (v) => { if (!v || v === "off") return null; const [l, w, b] = String(v).split(":").map(Number); return l > 0 ? { limit: l, windowS: w || 10, blockS: b || 10 } : null; };
 const waf = { cfg: parseWaf(process.env.EP_WAF), clients: new Map(), counted: 0, blocked: 0, blocks: 0, peak: 0 };
 function wafReset() { waf.clients = new Map(); waf.counted = 0; waf.blocked = 0; waf.blocks = 0; waf.peak = 0; }
-const ADMIN = /^\/ep\/_(reset|fail|config|stats|waf)$/;
+const ADMIN = /^\/ep\/_(reset|fail|config|stats|waf|dump)$/;
 function wafCheck(req, res, url) {
   if (!waf.cfg || req.method === "OPTIONS" || ADMIN.test(url.pathname)) return false;
   const ip = req.socket.remoteAddress || "?", now = Date.now();
@@ -78,7 +80,9 @@ function data(p, q) {
     const w = load("workouts.json").find((x) => String(x.sportRecordId) === q.get("recordId"));
     return w ? env(w) : bad("record not found");
   }
-  if (p === "/action/list") return q.get("custom") === "true" ? load("action-list-custom.json") : load("action-list.json");
+  if (p === "/action/list") { const es = q.get("languageId") === "es"; return q.get("custom") === "true" ? load(es ? "action-list-custom.es.json" : "action-list-custom.json") : load(es ? "action-list.es.json" : "action-list.json"); }
+  if (p === "/course/custom/detail") return load("course-detail.json");
+  if (p === "/course/custom/list") { const c = load("course-detail.json").data; return env([{ id: c.id, name: c.name, smallImg: c.smallImg, actionNum: c.mainStepList.length, duration: c.duration, updateTime: c.updateTime }]); }
   return null;
 }
 
@@ -101,6 +105,7 @@ function handle(req, res, url) {
     if (q.get("block") != null && waf.cfg) { const c = waf.clients.get(req.socket.remoteAddress || "?") || { times: [], until: 0 }; c.until = Date.now() + (+q.get("block") || waf.cfg.blockS) * 1000; waf.clients.set(req.socket.remoteAddress || "?", c); waf.blocks++; }
     json(res, 200, { ok: !!waf.cfg }); return true;
   }
+  if (p === "/_dump") { json(res, 200, load("workouts.json")); return true; }
   if (p === "/_hit") { res.statusCode = 204; res.end(); return true; }
   if (p === "/_stats") { json(res, 200, { waf: waf.cfg ? Object.assign({}, waf.cfg, { counted: waf.counted, blocked: waf.blocked, blocks: waf.blocks, peak: waf.peak, blockedUntil: Math.max(0, ...[...waf.clients.values()].map((c) => c.until)) }) : null, total: state.total, byRoute: state.byRoute, inFlight: state.inFlight, maxInFlight: state.maxInFlight, failed: state.failed, rules: state.rules, config: state.config }); return true; }
   const route = routeOf(p), body = data(p, q);

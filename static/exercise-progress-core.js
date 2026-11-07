@@ -151,8 +151,8 @@
   //   hasAny (any point at all, ignoring the range), isEmpty (no point in range), isSingle (exactly one),
   //   points:[{recordId, date, startTime, x, value, weight (tenths, weight kind), total (tenths, Combined),
   //            reps (reps at the best set), count (best count), sets, totalReps}],
-  //   summary: null | {latest, best, first, sessions, change:{abs, pct|null}} (over the points in range;
-  //            latest/best/first are {value, date}; for weight kind values are tenths of kg)}
+  //   summary: null | {latest, best, first, sessions, rangeSessions, change:{abs, pct|null}} over ALL points, whatever the
+  //            range (latest/best/first are {value, date}; weight values are tenths of kg); null only when !hasAny}
   // x is days since 1970-01-01 plus the fraction of the day, so two workouts on one date stay distinct.
   function buildSeries(index, actionId, opts) {
     const o = opts || {};
@@ -192,11 +192,15 @@
     const range = RANGES.includes(o.range) ? o.range : DEFAULT_RANGE;
     const cutoff = cutoffFor(range, o.today);
     const hasAny = pts.length > 0;
+    // Summary stats are ALL-TIME (personal best, first, latest, change, sessions); the range only
+    // narrows the chart points and `rangeSessions`.
+    const summary = summarize(pts);
     if (cutoff) pts = pts.filter((p) => p.date >= cutoff);
+    if (summary) summary.rangeSessions = pts.length;
     const modeKey = mode && WM ? WM.modeFor(mode.sideNum).key : "unknown";
     return {
       actionId: key, name, kind, modeKey, showTotal, range, cutoff, hasAny,
-      isEmpty: pts.length === 0, isSingle: pts.length === 1, points: pts, summary: summarize(pts),
+      isEmpty: pts.length === 0, isSingle: pts.length === 1, points: pts, summary,
     };
   }
 
@@ -241,22 +245,26 @@
     return [makeWindow(fromDayNumber(mid + 1), win.endDate), makeWindow(win.startDate, fromDayNumber(mid))];
   }
   // A window answer may be truncated when it holds `size` rows, or exactly a page size the app has used.
-  function isFull(count, size) {
+  // `maxSeen` (optional) is the largest row count any list call has returned so far: a server cap shows up as
+  // many windows answering with exactly that count, so a window at that count (>= 2) may be truncated too.
+  function isFull(count, size, maxSeen) {
     const s = size == null ? LIST_SIZE : size;
-    return count >= s || (s > Math.max.apply(null, KNOWN_CAPS) && KNOWN_CAPS.includes(count));
+    if (count >= s || (s > Math.max.apply(null, KNOWN_CAPS) && KNOWN_CAPS.includes(count))) return true;
+    return maxSeen != null && count >= 2 && count >= maxSeen;
   }
 
   const rowId = (r) => (r && typeof r === "object" ? num(r.sportRecordId != null ? r.sportRecordId : r.recordId) : null);
 
   // enumerateRecords({today, fetchWindow(win) -> rows, size, minYear, maxEmpty, stopWhenKnown(rows) -> bool, onWindow})
-  //   -> Promise<{rows:[{recordId,startTime}], coveredFrom (startDate of the oldest window walked), windows}>
+  //   -> Promise<{rows:[{recordId,startTime}], coveredFrom (startDate of the oldest window walked), windows, calls,
+//      saturated (a single-day window was still full: the listing may be incomplete), maxSeen}>
   // Walks 12-month windows newest to oldest, bisecting any window that may be truncated, stopping after
   // `maxEmpty` empty windows in a row (or at minYear). Rows are de-duplicated by record id.
   async function enumerateRecords(o) {
     const fetchWindow = o.fetchWindow, size = o.size == null ? LIST_SIZE : o.size;
     const maxEmpty = o.maxEmpty == null ? MAX_EMPTY_WINDOWS : o.maxEmpty;
     const byId = new Map();
-    let calls = 0;
+    let calls = 0, maxSeen = 0, saturated = false;
     const take = (rows) => {
       for (const r of Array.isArray(rows) ? rows : []) {
         const id = rowId(r);
@@ -268,8 +276,10 @@
       const rows = await fetchWindow(win);
       calls++;
       const list = Array.isArray(rows) ? rows : [];
-      const halves = isFull(list.length, size) ? bisectWindow(win) : null;
-      if (!halves) { take(list); return list; }
+      maxSeen = Math.max(maxSeen, list.length);
+      const full = isFull(list.length, size, maxSeen);
+      const halves = full ? bisectWindow(win) : null;
+      if (!halves) { take(list); if (full && list.length >= 2) saturated = true; return list; } // a one-day window that is still full: history may be cut
       take(list); // keep what we got; the halves fill in the rest
       const a = await listWin(halves[0]);
       const b = await listWin(halves[1]);
@@ -287,7 +297,7 @@
       win = nextWindow(win, o.minYear);
     }
     const rows = [...byId.values()];
-    return { rows, coveredFrom, windows, calls };
+    return { rows, coveredFrom, windows, calls, saturated, maxSeen };
   }
 
   // diffIds(listRows, cachedIds, {coveredFrom}) -> {toFetch:[{recordId,startTime}] newest first, stale:[recordId]}

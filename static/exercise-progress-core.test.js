@@ -75,7 +75,7 @@ test("change percent: one decimal, null when the first value is 0", () => {
   const b = C.buildSeries(idx, 20, { today: TODAY, mode: { sideNum: 0, countType: 1 } });
   assert.equal(b.summary.first.value, 10 * 0 + 20); // count 20, not zero
   const neg = C.buildSeries(idx, 10, { today: TODAY, range: "6M", mode: { sideNum: 1 } }).summary;
-  assert.equal(neg.change.abs, 150 - 120);
+  assert.equal(neg.change.abs, 150 - 100); // all-time: first ever session, not the first in the range
 });
 test("ranges filter by calendar months and keep hasAny", () => {
   const r3 = C.buildSeries(idx, 10, { today: TODAY, range: "3M", mode: { sideNum: 1 } });
@@ -88,7 +88,7 @@ test("ranges filter by calendar months and keep hasAny", () => {
   const none = C.buildSeries(idx, 10, { today: "2028-01-01", range: "3M", mode: { sideNum: 1 } });
   assert.equal(none.isEmpty, true);
   assert.equal(none.hasAny, true);
-  assert.equal(none.summary, null);
+  assert.equal(none.summary.sessions, 5); // all-time summary survives an empty range
   assert.equal(C.buildSeries(idx, 10, { today: TODAY, range: "bogus" }).range, "All");
 });
 test("range cutoff clamps month ends and is inclusive", () => {
@@ -394,4 +394,42 @@ test("the stub, the screen and the CSS never use a non-/api network API", () => 
   const src = fs.readFileSync(path.join(__dirname, "exercise-progress.js"), "utf8");
   assert.ok(!/\bXMLHttpRequest\b|\bWebSocket\b|\bsendBeacon\b/.test(src));
   for (const m of src.matchAll(/api\(\s*[`"']([^`"']+)/g)) assert.ok(m[1].startsWith("/"), m[1]);
+});
+
+test("summary stats are all-time: 3M and All give the same best, first, latest, change and sessions", () => {
+  const all = C.buildSeries(idx, 10, { today: TODAY, range: "All", mode: { sideNum: 1 } });
+  for (const r of ["3M", "6M", "1Y"]) {
+    const s = C.buildSeries(idx, 10, { today: TODAY, range: r, mode: { sideNum: 1 } });
+    assert.deepEqual({ ...s.summary, rangeSessions: 0 }, { ...all.summary, rangeSessions: 0 }, r);
+  }
+  assert.equal(C.buildSeries(idx, 10, { today: TODAY, range: "3M", mode: { sideNum: 1 } }).summary.rangeSessions, 3);
+  assert.equal(all.summary.rangeSessions, 5);
+  // best lies outside the visible range: still reported
+  const old = [C.summarizeWorkout(detail(1, "2025-01-01 08:00:00", [set(1, 200, 5)])), C.summarizeWorkout(detail(2, "2026-10-01 08:00:00", [set(1, 100, 5)]))];
+  const s3 = C.buildSeries(old, 1, { today: TODAY, range: "3M", mode: { sideNum: 1 } });
+  assert.equal(s3.points.length, 1); assert.deepEqual(s3.summary.best, { value: 200, date: "2025-01-01" });
+  assert.deepEqual(s3.summary.change, { abs: -100, pct: -50 });
+  // range with no points still has the all-time summary
+  const none = C.buildSeries(idx, 10, { today: "2028-01-01", range: "3M", mode: { sideNum: 1 } });
+  assert.equal(none.isEmpty, true); assert.equal(none.summary.sessions, 5); assert.equal(none.summary.rangeSessions, 0);
+});
+test("unknown server caps are detected: a window as full as the fullest one seen is bisected", async () => {
+  const dates = [];
+  for (let i = 0; i < 60; i++) dates.push(C.addDays("2026-10-29", -i * 5));
+  const srv = fakeServer(dates, 7); // size stays 500: the cap is unknown to the client
+  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
+  assert.equal(res.rows.length, 60);
+  assert.equal(res.saturated, false);
+  assert.ok(C.isFull(7, 500, 7)); assert.ok(!C.isFull(6, 500, 7)); assert.ok(!C.isFull(1, 500, 1));
+});
+test("a single-day window that is still full marks the listing saturated (never complete)", async () => {
+  const rows = Array.from({ length: 20 }, (_, i) => ({ sportRecordId: 1 + i, startTime: "2026-10-01 08:00:00" })); // 20 workouts on one day
+  const res = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end).slice(0, 5) });
+  assert.equal(res.saturated, true);
+  assert.equal(res.rows.length, 5);
+});
+test("small accounts do not trigger needless bisecting or false saturation", async () => {
+  const srv = fakeServer(["2026-10-01"], 500);
+  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
+  assert.equal(res.saturated, false); assert.equal(srv.calls.length, 3);
 });

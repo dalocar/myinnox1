@@ -212,18 +212,10 @@
     if (offline()) { setSync({ status: "offline", msg: "" }); return; }
     setSync({ status: "listing", done: 0, total: 0, failed: 0, msg: "" });
     fetchLibrary(store);
-    let enumerated, meta = {}, fullWalk = true;
+    let enumerated;
     try {
-      meta = (await store.getMeta("sync")) || {};
-      // After a complete sync only the newest window is re-listed, except once a day: that walk covers every
-      // year so workouts deleted elsewhere are purged too.
-      fullWalk = !(meta.complete && meta.fullAt && Date.now() - meta.fullAt < 24 * 3600 * 1000);
-      const have = S.workouts;
-      enumerated = await Core.enumerateRecords({
-        today: today(), size: SIZE(),
-        fetchWindow: (w) => listWindow(w, run),
-        stopWhenKnown: !fullWalk ? (rows) => rows.every((r) => have.has(Number(r.sportRecordId))) : null,
-      });
+      // One wide call lists the whole history (measured: size is honoured, newest first, unlimited depth).
+      enumerated = await Core.enumerateRecords({ size: SIZE(), fetchWindow: (w) => listWindow(w, run) });
     } catch (e) {
       if (stopped()) return;
       if (hasCache()) setSync({ status: offline() ? "offline" : "stale", msg: "" });
@@ -232,7 +224,8 @@
     }
     if (stopped()) return;
     const cached = new Map([...S.workouts].map(([id, w]) => [id, w.startTime]));
-    // Purge only from windows that were listed completely (never from a saturated, possibly cut listing).
+    // Every successful full listing purges workouts that are no longer listed (deleted elsewhere); never from an
+    // empty, failed (it throws before this point) or saturated (possibly cut) listing.
     const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated || !enumerated.rows.length ? null : enumerated.coveredFrom });
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
@@ -266,8 +259,7 @@
     if (stopped()) return;
     S.sync.failed = res.failed;
     if (res.paused) { setSync({ status: "paused", msg: lastErr }); return; }
-    const ok = res.failed === 0 && !enumerated.saturated; // never "complete" while a one-day window is still cut
-    await store.setMeta("sync", { complete: ok, at: Date.now(), fullAt: ok && fullWalk ? Date.now() : (ok ? meta.fullAt : 0) });
+    await store.setMeta("sync", { complete: res.failed === 0 && !enumerated.saturated, at: Date.now() });
     S.announce = "sync";
     setSync({ status: "done", msg: "" });
     scheduleRender(true);

@@ -7,8 +7,9 @@
 //   #imperial              profile unit = lb (default kg)
 //   #now=2026-10-29T12:00:00   fixed local clock
 //   #email=a@example.test  account used for the cache scope (default qa@example.test) - use two values to test isolation
-//   #size=6                client list page size (sets window.__EP_LIST_SIZE) so windows return "full" and bisect
-//   #cap=6                 fixture server returns at most 6 rows per list call (use with size=6; resets on /ep/_reset)
+//   #size=7&cap=7         exercise the bisect fallback: the client asks for size 7 (window.__EP_LIST_SIZE, default 5000) and the
+//                          fixture server caps every list answer at 7 rows, so the single wide call comes back "full" and is bisected.
+//                          #size=2&cap=2 makes the same-day pair a saturated day (warning "history may be missing").
 //   #retryscale=0.05       multiply the client's backoff waits (1,2,4,8 s and Retry-After) by this, to test failures fast
 //   #latency=400           fixture server latency per data call in ms (default 150)
 //   #fail=429:5[:route[:retryAfter]]   inject failures (see qa/exercise-progress-routes.js); route = list|detail|action|any

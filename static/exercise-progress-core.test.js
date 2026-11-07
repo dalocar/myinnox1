@@ -165,19 +165,6 @@ test("day numbers are DST safe", () => {
 });
 
 // ---- windows
-test("windows: 12 months back from today, contiguous, formatted for the API", () => {
-  const w0 = C.firstWindow("2026-10-29");
-  assert.equal(w0.startDate, "2025-10-30"); assert.equal(w0.endDate, "2026-10-29");
-  assert.equal(w0.start, "2025-10-30 00:00:00"); assert.equal(w0.end, "2026-10-29 23:59:59");
-  const w1 = C.nextWindow(w0);
-  assert.equal(w1.endDate, "2025-10-29"); assert.equal(w1.startDate, "2024-10-30");
-  let w = w0, n = 0;
-  while (w) { n++; w = C.nextWindow(w); }
-  assert.ok(n >= 11 && n <= 13, "walks back to 2015: " + n);
-  assert.equal(C.nextWindow(C.makeWindow("2015-01-01", "2015-12-31")), null);
-  assert.equal(C.firstWindow("nope"), null);
-  assert.equal(C.firstWindow("2028-02-29").startDate, "2027-03-01");
-});
 test("bisectWindow splits into newer and older halves without gap or overlap", () => {
   const [newer, older] = C.bisectWindow(C.makeWindow("2026-01-01", "2026-01-10"));
   assert.equal(older.startDate, "2026-01-01"); assert.equal(older.endDate, "2026-01-05");
@@ -187,14 +174,6 @@ test("bisectWindow splits into newer and older halves without gap or overlap", (
   assert.equal(C.bisectWindow(C.makeWindow("2026-01-01", "2026-01-01")), null);
   assert.equal(C.bisectWindow(null), null);
 });
-test("isFull: size rows, or a known smaller page cap", () => {
-  assert.equal(C.isFull(500, 500), true);
-  assert.equal(C.isFull(499, 500), false);
-  assert.equal(C.isFull(50, 500), true);
-  assert.equal(C.isFull(50, 50), true);
-  assert.equal(C.isFull(0, 500), false);
-});
-
 // A fake server: workouts with dates, a row cap, windows inclusive.
 function fakeServer(dates, cap) {
   const rows = dates.map((d, i) => ({ sportRecordId: 1000 + i, startTime: d + " 08:00:00" }));
@@ -206,54 +185,44 @@ function fakeServer(dates, cap) {
   };
   return { rows, calls, fetchWindow };
 }
-test("enumerateRecords finds everything with a small cap by bisecting (no truncation)", async () => {
+test("allWindow is one wide call with the API timestamp format", () => {
+  const w = C.allWindow();
+  assert.equal(w.start, "1990-01-01 00:00:00"); assert.equal(w.end, "2100-12-31 23:59:59");
+  assert.equal(C.LIST_SIZE, 5000);
+});
+test("isFull: only a full page may be truncated", () => {
+  assert.equal(C.isFull(5000, 5000), true); assert.equal(C.isFull(4999, 5000), false); assert.equal(C.isFull(0), false);
+  assert.equal(C.isFull(50, 5000), false);
+});
+test("enumerateRecords: one call lists everything, whatever the history depth", async () => {
+  const srv = fakeServer(["2026-10-01", "2025-06-01", "2010-03-03", "1995-01-01"], 100000);
+  const res = await C.enumerateRecords({ fetchWindow: srv.fetchWindow });
+  assert.equal(res.rows.length, 4); assert.equal(srv.calls.length, 1); assert.equal(res.saturated, false);
+  assert.equal(res.coveredFrom, "1990-01-01");
+});
+test("enumerateRecords: empty account is one call; errors propagate", async () => {
+  const srv = fakeServer([], 5000);
+  const res = await C.enumerateRecords({ fetchWindow: srv.fetchWindow });
+  assert.equal(res.rows.length, 0); assert.equal(srv.calls.length, 1);
+  await assert.rejects(C.enumerateRecords({ fetchWindow: async () => { throw new Error("boom"); } }), /boom/);
+});
+test("fallback: a page exactly as full as requested is bisected until nothing is cut (cap = size)", async () => {
   const dates = [];
-  for (let i = 0; i < 60; i++) dates.push(C.addDays("2026-10-29", -i * 5)); // 60 workouts over ~10 months
+  for (let i = 0; i < 60; i++) dates.push(C.addDays("2026-10-29", -i * 5));
   const srv = fakeServer(dates, 7);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow, size: 7 });
-  assert.equal(res.rows.length, 60);
-  assert.ok(srv.calls.length > 8);
-  assert.equal(new Set(res.rows.map((r) => r.recordId)).size, 60);
+  const res = await C.enumerateRecords({ fetchWindow: srv.fetchWindow, size: 7 });
+  assert.equal(res.rows.length, 60); assert.equal(res.saturated, false); assert.ok(srv.calls.length > 8);
 });
-test("enumerateRecords with the default size: one call per year, stops after 2 empty years", async () => {
-  const srv = fakeServer(["2026-10-01", "2025-06-01", "2022-01-01"], 500);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
-  assert.equal(res.rows.length, 2); // 2022-01-01 lies beyond two empty years: not reached by design
-  // windows: 2025-10-30.., 2024-10-30.. (2025-06-01), 2023-10-30.. (empty), 2022-10-30.. (empty) -> stop
-  assert.equal(res.windows, 4);
-  assert.equal(res.coveredFrom, "2022-10-30");
-});
-test("enumerateRecords: a single empty year in between does not stop the walk", async () => {
-  const srv = fakeServer(["2026-10-01", "2024-06-01"], 500);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
-  assert.equal(res.rows.length, 2);
-});
-test("enumerateRecords: empty account makes exactly 2 list calls", async () => {
-  const srv = fakeServer([], 500);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
-  assert.equal(res.rows.length, 0); assert.equal(srv.calls.length, 2);
-});
-test("enumerateRecords: stopWhenKnown ends an incremental walk at the first fully cached window", async () => {
-  const srv = fakeServer(["2026-10-01", "2025-06-01", "2024-01-01"], 500);
-  const known = new Set([1001, 1002]);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow, stopWhenKnown: (rows) => rows.every((r) => known.has(r.sportRecordId)) });
-  assert.deepEqual(res.rows.map((r) => r.recordId).sort(), [1000, 1001]);
-  assert.equal(srv.calls.length, 2);
-});
-test("enumerateRecords propagates errors, never past minYear", async () => {
-  await assert.rejects(C.enumerateRecords({ today: "2026-10-29", fetchWindow: async () => { throw new Error("boom"); } }), /boom/);
-  const calls = [];
-  await C.enumerateRecords({ today: "2017-06-01", maxEmpty: 99, fetchWindow: async (w) => { calls.push(w); return []; } });
-  assert.ok(calls.every((w) => w.endDate >= "2015-01-01"));
+test("fallback: a single day still full marks the listing saturated", async () => {
+  const rows = Array.from({ length: 30 }, (_, i) => ({ sportRecordId: 1 + i, startTime: "2026-10-01 08:00:00" }));
+  const res = await C.enumerateRecords({ size: 25, fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end).slice(0, 25) });
+  assert.equal(res.saturated, true); assert.equal(res.rows.length, 25);
 });
 test("enumerateRecords copes with garbage rows and duplicates", async () => {
-  const res = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async () => [null, { sportRecordId: 5, startTime: "2026-10-01 00:00:00" }, { sportRecordId: 5 }, { sportRecordId: "x" }, 7, { recordId: 6 }] });
+  const res = await C.enumerateRecords({ fetchWindow: async () => [null, { sportRecordId: 5, startTime: "2026-10-01 00:00:00" }, { sportRecordId: 5 }, { sportRecordId: "x" }, 7, { recordId: 6 }] });
   assert.deepEqual(res.rows.map((r) => r.recordId).sort(), [5, 6]);
-  const res2 = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async () => ({}) });
-  assert.equal(res2.rows.length, 0);
+  assert.equal((await C.enumerateRecords({ fetchWindow: async () => ({}) })).rows.length, 0);
 });
-
-// ---- diff
 test("diffIds: missing ids newest first, listed duplicates ignored", () => {
   const list = [
     { sportRecordId: 1, startTime: "2026-01-01 08:00:00" }, { sportRecordId: 2, startTime: "2026-03-01 08:00:00" },
@@ -413,34 +382,13 @@ test("summary stats are all-time: 3M and All give the same best, first, latest, 
   const none = C.buildSeries(idx, 10, { today: "2028-01-01", range: "3M", mode: { sideNum: 1 } });
   assert.equal(none.isEmpty, true); assert.equal(none.summary.sessions, 5); assert.equal(none.summary.rangeSessions, 0);
 });
-test("unknown server caps are detected: a window as full as the fullest one seen is bisected", async () => {
-  const dates = [];
-  for (let i = 0; i < 60; i++) dates.push(C.addDays("2026-10-29", -i * 5));
-  const srv = fakeServer(dates, 7); // size stays 500: the cap is unknown to the client
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
-  assert.equal(res.rows.length, 60);
-  assert.equal(res.saturated, false);
-  assert.ok(C.isFull(7, 500, 7)); assert.ok(!C.isFull(6, 500, 7)); assert.ok(!C.isFull(1, 500, 1));
-});
-test("a single-day window that is still full marks the listing saturated (never complete)", async () => {
-  const rows = Array.from({ length: 30 }, (_, i) => ({ sportRecordId: 1 + i, startTime: "2026-10-01 08:00:00" })); // 30 workouts on one day
-  const res = await C.enumerateRecords({ today: "2026-10-29", maxEmpty: 1, fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end).slice(0, 25) });
-  assert.equal(res.saturated, true);
-  assert.equal(res.rows.length, 25);
-});
-test("small accounts do not trigger needless bisecting or false saturation", async () => {
-  const srv = fakeServer(["2026-10-01"], 500);
-  const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: srv.fetchWindow });
-  assert.equal(res.saturated, false); assert.equal(srv.calls.length, 3);
-});
-
-test("tiny histories never look saturated: two same-day workouts are real data, the sync can complete and purge", async () => {
+test("tiny histories are one call, not saturated, and purge-eligible", async () => {
   const rows = [{ sportRecordId: 1, startTime: "2026-10-20 07:15:00" }, { sportRecordId: 2, startTime: "2026-10-20 18:40:00" }];
   const res = await C.enumerateRecords({ today: "2026-10-29", fetchWindow: async (w) => rows.filter((r) => r.startTime >= w.start && r.startTime <= w.end) });
   assert.equal(res.saturated, false); assert.equal(res.rows.length, 2);
   const d = C.diffIds(res.rows, new Map([[1, "2026-10-20 07:15:00"], [9, "2026-10-21 08:00:00"]]), { coveredFrom: res.coveredFrom });
   assert.deepEqual(d.stale, [9]); // purge-eligible
-  assert.equal(C.SATURATION_FLOOR, 20);
+  assert.equal(res.calls, 1);
 });
 test("an empty listing never makes anything stale (a 200 with [] must not wipe the cache)", () => {
   const cache = new Map([[1, "2026-01-01 08:00:00"], [2, "2025-06-01 08:00:00"]]);

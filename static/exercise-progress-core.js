@@ -13,11 +13,10 @@
   const SCHEMA = 1;                       // version of the cached workout summary
   const RANGES = ["3M", "6M", "1Y", "All"];
   const DEFAULT_RANGE = "All";
-  const LIST_SIZE = 500;                  // `size` requested from /sport/record/list
-  const KNOWN_CAPS = [50];                // page sizes the app has used; a window with exactly this many rows may be truncated
-  const MIN_YEAR = 2015;                  // never list before this year
-  const SATURATION_FLOOR = 20;           // a one-day window is only reported as cut when it holds at least this many rows
-  const MAX_EMPTY_WINDOWS = 2;            // stop walking back after this many empty 12-month windows in a row
+  // Measured on the real API (2026-11-07): `size` is honoured without a cap, results are newest first, history depth is
+  // unlimited, so ONE wide call lists everything. The bisect path below is only a safety net.
+  const LIST_SIZE = 5000;                 // `size` requested from /sport/record/list
+  const LIST_FROM = "1990-01-01", LIST_TO = "2100-12-31";
   const CONCURRENCY = 3;
   const MAX_RETRIES = 4;                  // retries after the first attempt: waits 1, 2, 4, 8 s
   const BASE_DELAY_MS = 1000;
@@ -225,18 +224,8 @@
   function makeWindow(startDate, endDate) {
     return { startDate, endDate, start: stamp(startDate, false), end: stamp(endDate, true) };
   }
-  // First window: the 12 months ending today (inclusive).
-  function firstWindow(today) {
-    if (!parseDate(today)) return null;
-    return makeWindow(addDays(addMonths(today, -12), 1), today);
-  }
-  // Next older 12-month window, or null once it would end before MIN_YEAR.
-  function nextWindow(win, minYear) {
-    if (!win || !parseDate(win.startDate)) return null;
-    const end = addDays(win.startDate, -1);
-    if (parseDate(end).y < (minYear == null ? MIN_YEAR : minYear)) return null;
-    return makeWindow(addDays(addMonths(end, -12), 1), end);
-  }
+  // The one wide window used for a normal sync.
+  const allWindow = () => makeWindow(LIST_FROM, LIST_TO);
   // Split a window in two halves by day: [newer, older]; null if it is a single day.
   function bisectWindow(win) {
     if (!win) return null;
@@ -245,27 +234,19 @@
     const mid = a + Math.floor((b - a) / 2); // older half: a..mid, newer half: mid+1..b
     return [makeWindow(fromDayNumber(mid + 1), win.endDate), makeWindow(win.startDate, fromDayNumber(mid))];
   }
-  // A window answer may be truncated when it holds `size` rows, or exactly a page size the app has used.
-  // `maxSeen` (optional) is the largest row count any list call has returned so far: a server cap shows up as
-  // many windows answering with exactly that count, so a window at that count (>= 2) may be truncated too.
-  function isFull(count, size, maxSeen) {
-    const s = size == null ? LIST_SIZE : size;
-    if (count >= s || (s > Math.max.apply(null, KNOWN_CAPS) && KNOWN_CAPS.includes(count))) return true;
-    return maxSeen != null && count >= 2 && count >= maxSeen;
-  }
+  // An answer with as many rows as were requested may be truncated.
+  const isFull = (count, size) => count >= (size == null ? LIST_SIZE : size);
 
   const rowId = (r) => (r && typeof r === "object" ? num(r.sportRecordId != null ? r.sportRecordId : r.recordId) : null);
 
-  // enumerateRecords({today, fetchWindow(win) -> rows, size, minYear, maxEmpty, stopWhenKnown(rows) -> bool, onWindow})
-  //   -> Promise<{rows:[{recordId,startTime}], coveredFrom (startDate of the oldest window walked), windows, calls,
-//      saturated (a single-day window was still full: the listing may be incomplete), maxSeen}>
-  // Walks 12-month windows newest to oldest, bisecting any window that may be truncated, stopping after
-  // `maxEmpty` empty windows in a row (or at minYear). Rows are de-duplicated by record id.
+  // enumerateRecords({fetchWindow(win) -> rows, size}) -> Promise<{rows:[{recordId,startTime}], coveredFrom, calls, saturated}>
+  // One wide call. Only when it returns exactly `size` rows (possible truncation) the window is bisected by day, newest
+  // half first, down to single days; a single day that is still full sets `saturated` (listing may be incomplete).
+  // Rows are de-duplicated by record id. Errors propagate (a failed listing must never lead to a purge).
   async function enumerateRecords(o) {
     const fetchWindow = o.fetchWindow, size = o.size == null ? LIST_SIZE : o.size;
-    const maxEmpty = o.maxEmpty == null ? MAX_EMPTY_WINDOWS : o.maxEmpty;
     const byId = new Map();
-    let calls = 0, maxSeen = 0, saturated = false;
+    let calls = 0, saturated = false;
     const take = (rows) => {
       for (const r of Array.isArray(rows) ? rows : []) {
         const id = rowId(r);
@@ -277,28 +258,16 @@
       const rows = await fetchWindow(win);
       calls++;
       const list = Array.isArray(rows) ? rows : [];
-      maxSeen = Math.max(maxSeen, list.length);
-      const full = isFull(list.length, size, maxSeen);
+      const full = isFull(list.length, size);
       const halves = full ? bisectWindow(win) : null;
-      if (!halves) { take(list); if (full && list.length >= SATURATION_FLOOR) saturated = true; return list; } // a one-day window that is still full: history may be cut
-      take(list); // keep what we got; the halves fill in the rest
-      const a = await listWin(halves[0]);
-      const b = await listWin(halves[1]);
-      return list.concat(a, b);
+      take(list); // keep what we got; halves fill in the rest
+      if (!halves) { if (full) saturated = true; return; }
+      await listWin(halves[0]);
+      await listWin(halves[1]);
     }
-    let win = firstWindow(o.today), empties = 0, coveredFrom = null, windows = 0;
-    while (win) {
-      const rows = await listWin(win);
-      windows++;
-      coveredFrom = win.startDate;
-      if (typeof o.onWindow === "function") o.onWindow(win, rows);
-      empties = rows.length === 0 ? empties + 1 : 0;
-      if (empties >= maxEmpty) break;
-      if (typeof o.stopWhenKnown === "function" && rows.length && o.stopWhenKnown(rows)) break;
-      win = nextWindow(win, o.minYear);
-    }
-    const rows = [...byId.values()];
-    return { rows, coveredFrom, windows, calls, saturated, maxSeen };
+    const win = allWindow();
+    await listWin(win);
+    return { rows: [...byId.values()], coveredFrom: win.startDate, calls, saturated };
   }
 
   // diffIds(listRows, cachedIds, {coveredFrom}) -> {toFetch:[{recordId,startTime}] newest first, stale:[recordId]}
@@ -440,10 +409,10 @@
   const dbName = (email) => DB_PREFIX + accountKey(email);
 
   return {
-    SCHEMA, SATURATION_FLOOR, RANGES, DEFAULT_RANGE, LIST_SIZE, KNOWN_CAPS, MIN_YEAR, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
+    SCHEMA, RANGES, DEFAULT_RANGE, LIST_SIZE, LIST_FROM, LIST_TO, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
     parseDate, localISO, dayNumber, fromDayNumber, addDays, addMonths, parseStart, stamp,
     summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions,
-    makeWindow, firstWindow, nextWindow, bisectWindow, isFull, enumerateRecords, diffIds,
+    makeWindow, allWindow, bisectWindow, isFull, enumerateRecords, diffIds,
     parseRetryAfter, retryDelay, isRetryable, isTransport, withRetry, makeGate, runPool,
     accountKey, dbName,
   };

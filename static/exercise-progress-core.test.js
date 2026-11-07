@@ -513,3 +513,15 @@ test("a 429 anywhere starts the tab-wide cooldown (requestLog.noteBlock)", () =>
   assert.equal(log.noteBlock(5000, () => 0), until); // never shortens
   assert.equal(C.makePacer({ log, now: c.now, sleep: c.sleep }).waitMs(), 11000);
 });
+test("N10: corrupted pending-purge meta fails safe: new pending set with now, never an immediate purge", () => {
+  const now = C.CONFIRM_MS * 5, stale = ids(1, 30);
+  const bad = [null, undefined, "x", 42, [], {}, { ids: "1,2" }, { ids: [] }, { ids: [1, "a"], seenAt: 0 }, { ids: stale }, { ids: stale, seenAt: NaN },
+    { ids: stale, seenAt: "yesterday" }, { ids: stale, seenAt: now + 60000 }, { ids: [null], seenAt: 0 }, { ids: stale, seenAt: null }];
+  for (const p of bad) {
+    const d = C.decidePurge(stale, 100, p, now);
+    assert.deepEqual(d.purge, [], JSON.stringify(p));
+    assert.deepEqual(d.pending, { ids: stale, seenAt: now }, JSON.stringify(p));
+  }
+  // a well-formed pending set with a numeric-string timestamp still works
+  assert.deepEqual(C.decidePurge(stale, 100, { ids: stale.map(String), seenAt: "0" }, now).purge, stale);
+});

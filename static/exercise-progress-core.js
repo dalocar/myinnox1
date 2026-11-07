@@ -484,7 +484,12 @@
     const ids = [...new Set((Array.isArray(stale) ? stale : []).map(Number).filter((x) => x > 0))];
     const t = num(now) === null ? Date.now() : num(now);
     const missing = new Set(ids);
-    let p = pending && Array.isArray(pending.ids) && pending.ids.length ? pending : null;
+    // Fail safe (N10): anything that is not a well-formed pending set seen in the past counts as "no pending set", so
+    // a corrupted meta value can only delay a purge, never trigger one.
+    const raw = pending && typeof pending === "object" ? pending.seenAt : null;
+    const seen = typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "") ? num(raw) : null;
+    const okIds = pending && typeof pending === "object" && Array.isArray(pending.ids) && pending.ids.length > 0 && pending.ids.every((x) => (typeof x === "number" || typeof x === "string") && num(x) !== null && num(x) > 0);
+    let p = okIds && seen !== null && seen <= t ? { ids: pending.ids.map(Number), seenAt: seen } : null;
     if (p && !p.ids.every((id) => missing.has(Number(id)))) p = null; // some came back: forget the pending set
     if (!ids.length) return { purge: [], pending: null };
     if (purgeAllowed(ids.length, cached)) return { purge: ids, pending: null };

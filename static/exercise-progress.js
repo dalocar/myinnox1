@@ -457,7 +457,9 @@
       else if (wait <= 5 && ann.cd === "start") { ann.cd = "5"; msg = waitText; }
     } else if (ann.cd) {
       ann.cd = "";
-      if (sy.status === "fetching" || sy.status === "listing") msg = t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total });
+      // N9: during the listing phase there is no "x of y" yet.
+      if (sy.status === "listing") msg = t("Looking up your workouts…");
+      else if (sy.status === "fetching") msg = t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total });
     }
     if (sy.status !== ann.status) {
       ann.status = sy.status;

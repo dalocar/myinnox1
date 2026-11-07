@@ -608,5 +608,6 @@
     "{n} sessions": "{n}回",
     "Waiting {s} s (rate limit)": "{s}秒待機中（リクエスト制限）",
     "Syncing in another tab": "別のタブで同期中",
+    "Sync paused: the server's rate limit was reached. Resume when the countdown ends.": "同期を一時停止しました：サーバーのリクエスト上限に達しました。カウントダウンが終わったら再開してください。",
   },
 };

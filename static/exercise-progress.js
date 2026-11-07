@@ -39,6 +39,7 @@
     "Progress summary": "Resumen del progreso",
     "Waiting {s} s (rate limit)": "Esperando {s} s (límite de peticiones)",
     "Syncing in another tab": "Sincronizando en otra pestaña",
+    "Sync paused: the server's rate limit was reached. Resume when the countdown ends.": "Sincronización en pausa: se alcanzó el límite de peticiones del servidor. Reanuda cuando termine la cuenta atrás.",
     "{n} session": "{n} sesión", "{n} sessions": "{n} sesiones",
     "{n} in this range": "{n} en este periodo",
     "No history is saved on this device yet.": "Todavía no hay historial guardado en este dispositivo.",
@@ -249,7 +250,13 @@
     setSync({ status: "elsewhere", msg: "" });
     const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
     S.lockAbort = ac;
-    try { await L.request(LOCK, ac ? { signal: ac.signal } : {}, async () => {}); } catch (e) { return; } // aborted on leave
+    // While the other tab syncs, re-read the cache every 5 s so this view fills in too (cheap, local).
+    const refresh = setInterval(async () => {
+      if (run !== S.runId || !S.open) return clearInterval(refresh);
+      try { S.workouts = await loadCache(S.store); scheduleRender(false); } catch (e) { /* ignore */ }
+    }, 5000);
+    try { await L.request(LOCK, ac ? { signal: ac.signal } : {}, async () => {}); } catch (e) { clearInterval(refresh); return; } // aborted on leave
+    clearInterval(refresh);
     if (run !== S.runId || !S.open) return;
     try { S.workouts = await loadCache(S.store); } catch (e) { /* keep what we have */ }
     scheduleRender(true);
@@ -261,7 +268,7 @@
     const stopped = () => run !== S.runId;
     const hasCache = () => S.workouts.size > 0;
     if (offline()) { setSync({ status: "offline", msg: "" }); return; }
-    setSync({ status: "listing", done: 0, total: 0, failed: 0, msg: "" });
+    setSync({ status: "listing", done: 0, total: 0, failed: 0, msg: "", reason: "" });
     const pacer = Core.makePacer();
     let enumerated;
     try {
@@ -271,7 +278,7 @@
       enumerated = await Core.enumerateRecords({ size: SIZE(), fetchWindow: (w) => listWindow(w, run, pacer) });
     } catch (e) {
       if (stopped()) return;
-      if (e && e.pause) { setSync({ status: "paused", msg: "" }); return; }
+      if (e && e.pause) { setSync({ status: "paused", msg: "", reason: Number(e.status) === 429 ? "ratelimit" : "" }); return; }
       if (hasCache()) setSync({ status: offline() ? "offline" : "stale", msg: "" });
       else setSync({ status: "error", msg: e && e.message ? String(e.message) : "" });
       return;
@@ -282,9 +289,15 @@
     // empty, failed (it throws before this point) or saturated (possibly cut) listing.
     const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated || !enumerated.rows.length ? null : enumerated.coveredFrom });
     // N4: a purge of more than max(5, 20 %) of the cache in one go is suspicious (cap or partial answer): skip, log it.
-    if (diff.stale.length && !Core.purgeAllowed(diff.stale.length, cached.size)) {
-      store.setMeta("purgeSkipped", { at: Date.now(), stale: diff.stale.length, cached: cached.size, listed: enumerated.rows.length }).catch(() => {});
-      diff.stale = [];
+    // N7: a large purge is confirmed by a second complete listing at least 10 minutes later (meta "purgePending").
+    if (!enumerated.saturated && enumerated.rows.length) {
+      const pending = await store.getMeta("purgePending").catch(() => null);
+      const d = Core.decidePurge(diff.stale, cached.size, pending, Date.now());
+      if (d.pending && (!pending || d.pending.seenAt !== pending.seenAt)) {
+        store.setMeta("purgeSkipped", { at: Date.now(), stale: d.pending.ids.length, cached: cached.size, listed: enumerated.rows.length }).catch(() => {});
+      }
+      await store.setMeta("purgePending", d.pending).catch(() => {});
+      diff.stale = d.purge;
     }
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
@@ -299,6 +312,7 @@
       } catch (e) {
         if (stopped() || (e && e.stopped)) return;
         lastErr = e && e.message ? String(e.message) : "";
+        if (e && Number(e.status) === 429) S.sync.reason = "ratelimit";
         if (Core.isTransport(e)) e.pause = true; // 429 / 5xx / network: stop and let the user resume
         throw e;
       }
@@ -397,6 +411,9 @@
     syncBox.hidden = true;
     const live = el("div", "sr-only");
     live.setAttribute("role", "status"); live.setAttribute("aria-live", "polite");
+    const syncLive = el("div", "sr-only");
+    syncLive.setAttribute("aria-live", "polite"); syncLive.className = "sr-only exp-sync-live";
+    ann.cd = ""; ann.status = "";
 
     const ranges = el("div", "exp-ranges");
     ranges.setAttribute("role", "group"); ranges.setAttribute("aria-label", t("Range"));
@@ -425,8 +442,30 @@
     const tw = el("div", "exp-tablewrap");
     tw.tabIndex = 0; tw.setAttribute("role", "region"); tw.setAttribute("aria-label", t("Data table"));
     det.append(sum, tw);
-    root.append(bar, syncBox, live, ranges, stats, card, det);
-    nodes = { root, title: h, sub, syncBox, live, ranges, stats, card, ch, note, msg, wrap, canvas, det, tw };
+    root.append(bar, syncBox, live, syncLive, ranges, stats, card, det);
+    nodes = { root, title: h, sub, syncBox, live, syncLive, ranges, stats, card, ch, note, msg, wrap, canvas, det, tw };
+  }
+
+  // Screen-reader announcements for the sync, throttled: cooldown start, 5 s left, resume after the cooldown, and
+  // status changes (paused, other tab, done with problems). The visual banner itself is not a live region.
+  const ann = { cd: "", status: "" };
+  function announceSync(sy, wait, waitText) {
+    if (!nodes || !nodes.syncLive) return;
+    let msg = "";
+    if (wait > 0) {
+      if (!ann.cd) { ann.cd = "start"; msg = waitText; }
+      else if (wait <= 5 && ann.cd === "start") { ann.cd = "5"; msg = waitText; }
+    } else if (ann.cd) {
+      ann.cd = "";
+      if (sy.status === "fetching" || sy.status === "listing") msg = t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total });
+    }
+    if (sy.status !== ann.status) {
+      ann.status = sy.status;
+      if (sy.status === "paused") msg = sy.reason === "ratelimit" ? t("Sync paused: the server's rate limit was reached. Resume when the countdown ends.") : t("Sync paused: {msg}", { msg: t("The server is busy or unreachable. Try again in a moment.") });
+      else if (sy.status === "elsewhere") msg = t("Syncing in another tab");
+      else if (sy.status === "error") msg = t("Could not load your workout history");
+    }
+    if (msg) nodes.syncLive.textContent = msg;
   }
 
   function renderSync() {
@@ -437,6 +476,7 @@
     box.classList.remove("is-error");
     const wait = Math.ceil((Core.requestLog.cooldownUntil - Date.now()) / 1000);
     const waitText = wait > 0 ? t("Waiting {s} s (rate limit)", { s: wait }) : "";
+    announceSync(sy, wait, waitText);
     if (sy.status === "elsewhere") {
       box.hidden = false;
       box.appendChild(el("p", "exp-sync-text", t("Syncing in another tab")));
@@ -456,7 +496,9 @@
       }
     } else if (sy.status === "paused") {
       box.hidden = false; box.classList.add("is-error");
-      box.appendChild(el("p", "exp-sync-text", t("Sync paused: {msg}", { msg: t("The server is busy or unreachable. Try again in a moment.") })));
+      box.appendChild(el("p", "exp-sync-text", sy.reason === "ratelimit"
+        ? t("Sync paused: the server's rate limit was reached. Resume when the countdown ends.")
+        : t("Sync paused: {msg}", { msg: t("The server is busy or unreachable. Try again in a moment.") })));
       box.appendChild(el("p", "exp-sync-sub", t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total })));
       if (waitText) box.appendChild(el("p", "exp-sync-sub", waitText));
       const b = el("button", "secondary", t("Resume")); b.type = "button";

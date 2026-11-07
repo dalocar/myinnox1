@@ -604,5 +604,6 @@
     "{n} sessions": "{n} sessioni",
     "Waiting {s} s (rate limit)": "Attesa di {s} s (limite di richieste)",
     "Syncing in another tab": "Sincronizzazione in un’altra scheda",
+    "Sync paused: the server's rate limit was reached. Resume when the countdown ends.": "Sincronizzazione in pausa: è stato raggiunto il limite di richieste del server. Riprendi al termine del conto alla rovescia.",
   },
 };

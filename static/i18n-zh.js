@@ -607,5 +607,6 @@
     "{n} sessions": "{n} 次训练",
     "Waiting {s} s (rate limit)": "等待 {s} 秒（请求限制）",
     "Syncing in another tab": "正在其他标签页中同步",
+    "Sync paused: the server's rate limit was reached. Resume when the countdown ends.": "同步已暂停：已达到服务器的请求上限。倒计时结束后再继续。",
   },
 };

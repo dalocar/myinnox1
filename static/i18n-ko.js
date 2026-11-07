@@ -607,5 +607,6 @@
     "{n} sessions": "{n}회",
     "Waiting {s} s (rate limit)": "{s}초 대기 중(요청 제한)",
     "Syncing in another tab": "다른 탭에서 동기화 중",
+    "Sync paused: the server's rate limit was reached. Resume when the countdown ends.": "동기화 일시 중지: 서버의 요청 한도에 도달했습니다. 카운트다운이 끝나면 다시 시작하세요.",
   },
 };

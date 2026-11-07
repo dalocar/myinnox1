@@ -61,6 +61,10 @@ async function api(path, opts = {}) {
       err.status = res.status;
       const ra = res.headers && res.headers.get && res.headers.get("Retry-After");
       if (ra) err.retryAfterRaw = ra;
+      // Any 429 (Cloudflare WAF block, whatever the body) starts the tab-wide Exercise Progress sync cooldown.
+      if (res.status === 429 && window.ExerciseProgressCore && ExerciseProgressCore.requestLog) {
+        ExerciseProgressCore.requestLog.noteBlock(ExerciseProgressCore.parseRetryAfter(ra));
+      }
     }
     throw err;
   }

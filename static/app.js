@@ -354,8 +354,13 @@ function weightCell(step, i) {
 
 // Exercise Progress shortcut next to the load input: only for steps that have a weight (sideNum 1 or 2, or an unknown
 // mode with a weight set) and a known action. sideNum 0 steps (no weight) get none.
+// A course step points at its library action with actionLibraryId; workout sets use the same number as actionId.
+function stepActionId(step) {
+  const id = step.actionLibraryId != null && step.actionLibraryId !== "" ? step.actionLibraryId : step.actionId;
+  return id != null && Number(id) > 0 ? String(Number(id)) : "";
+}
 function hasProgressIcon(step) {
-  if (!window.ExerciseProgressUI || step.actionId == null || step.actionId === "") return false;
+  if (!window.ExerciseProgressUI || !stepActionId(step)) return false;
   const mode = WeightModeCore.modeFor(step.sideNum);
   return mode.key === "unknown" ? Number(step.sideWeight) > 0 : mode.hasWeight;
 }
@@ -367,7 +372,7 @@ function progressButton(step, i) {
 // Opens Exercise Progress ABOVE the editor (an overlay): the editor, its unsaved edits and its scroll position are never
 // touched, so Back is just closing the layer and putting focus back on the icon.
 function openStepProgress(step, i) {
-  ExerciseProgressUI.open(String(step.actionId), {
+  ExerciseProgressUI.open(stepActionId(step), {
     name: step.actionName || "", overlay: true,
     onBack: () => { const b = $(`step-${i}-progress`); (b || $("edit-name")).focus({ preventScroll: true }); },
   });

@@ -5,7 +5,7 @@
 // `node qa/make-exercise-progress-fixtures.js`). Default clock 2026-10-29 12:00 local.
 // Flags in location.hash, separated by & (bare token or k=v):
 //   #imperial              profile unit = lb (default kg)
-//   #now=2026-10-29T12:00:00   fixed local clock
+//   #now=2026-10-29T12:00:00   fake local clock start (default that time; without #now it keeps running across reloads of the tab)
 //   #email=a@example.test  account used for the cache scope (default qa@example.test) - use two values to test isolation
 //   #size=7&cap=7         exercise the bisect fallback: the client asks for size 7 (window.__EP_LIST_SIZE, default 5000) and the
 //                          fixture server caps every list answer at 7 rows, so the single wide call comes back "full" and is bisected.
@@ -43,8 +43,13 @@
   try { if (P.get("lang")) localStorage.setItem("innodigym_lang", P.get("lang")); if (P.get("theme")) localStorage.setItem("innodigym_theme", P.get("theme")); } catch (e) {}
 
   let shift = 0;
-  const NOW = new Date(P.get("now") || "2026-10-29T12:00:00").getTime(), T0 = Date.now(), RD = Date;
+  // The fake clock keeps running across reloads of this tab (sessionStorage), unless #now= is given again: a warm-up stamped in
+  // meta then still counts as "recent" after a reload. #now=... always restarts it from that time.
+  const BASE = new Date(P.get("now") || "2026-10-29T12:00:00").getTime(), RD = Date;
+  let saved = 0; try { saved = P.get("now") ? 0 : +sessionStorage.getItem("ep_stub_clock") || 0; } catch (e) {}
+  const NOW = Math.max(BASE, saved), T0 = Date.now();
   const clock = () => NOW + shift + (RD.now() - T0);
+  window.addEventListener("pagehide", () => { try { sessionStorage.setItem("ep_stub_clock", String(clock())); } catch (e) {} });
   function FDate(...a) { return a.length ? new RD(...a) : new RD(clock()); }
   FDate.prototype = RD.prototype; FDate.now = clock; FDate.UTC = RD.UTC; FDate.parse = RD.parse;
   window.Date = FDate;

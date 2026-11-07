@@ -290,3 +290,72 @@ AC1-AC10: PASS. AC6 is now met strictly: max in flight 3 and no request during a
 - Background tabs where browsers throttle timers (the pacer may run slower there, never faster).
 - A real 5000-row listing.
 - Reload while offline, the IndexedDB fallback, browsers other than Chromium, screen readers.
+
+---
+
+# Round 6 final check (commits c10910e, 6d4e43b: N7, N8)
+
+Automated: `node --test static/*.test.js` 246 pass / 0 fail (3 runs), external-hosts ok, theme contrast all pairs pass.
+
+## Verdict: READY. No Blocker, Major or Minor open; two Trivial items (N9, N10).
+
+## N7: large purge needs confirmation. FIXED
+Core review (`decidePurge`, ad-hoc node with explicit times, 30 stale out of 100 cached):
+- First sighting: nothing purged, pending set stored with `seenAt`.
+- At +5 min: still pending, same `seenAt`. At +10 min: all 30 purged and the pending set cleared.
+- Partial overlap where one id is listed again: the pending set is dropped. The remaining 29 become a new pending set with a new `seenAt`, so the 10-minute clock restarts.
+- Pending set plus 2 new stale ids at +11 min: 32 purged (30 confirmed plus 2 small).
+- Pending set plus 30 new stale ids at +11 min: the confirmed 30 are purged and the new 30 become pending.
+- No ids missing: pending cleared.
+- A small subset still missing (3): purged at once.
+- Clock moved backwards: nothing is purged, pending is kept and waits until the clock passes `seenAt` + 10 min. Safe.
+- Garbage ids are filtered out.
+- A non-numeric `seenAt` in meta is treated as old and purges at once (N10, Trivial: only the app writes this meta).
+
+Wiring: `decidePurge` runs only for a non-saturated, non-empty listing that did not fail (a failure throws earlier). The pending set lives in the per-account IndexedDB `meta` store. A second account had no pending set while the first had 30, and the logout `clearAll` removed every DB.
+
+Browser (limiter on):
+| Case | Result |
+|---|---|
+| Upstream cap 7 seen once (86 cached) | Nothing purged, 79 pending. The next normal listing brings them back and the pending set is cleared (86 kept). |
+| Real bulk delete (30 cached workouts no longer listed, 116 cached) | First sync: pending 30, nothing purged. Immediate second sync: same `seenAt`, nothing purged. With `seenAt` aged 11 min: purged (86). |
+| Small deletion (3) | Purged at once |
+| Empty listing (200 `[]`) with a matured pending set | Nothing purged, pending kept (116 / 30) |
+
+## N8: rate-limit UX. FIXED
+- A 429 seen by a non-sync `api()` call (`/app/getInfo` during a forced block, progress screen closed) starts the tab cooldown (11.4 s). Opening the screen then shows "Waiting 12 s … 1 s (rate limit)". The first sync request goes out 11.4 s after the UI 429, so none was sent during the cooldown.
+- Second block: the banner reads "Sync paused: the server's rate limit was reached. Resume when the countdown ends." together with the countdown and Resume. The new key is translated in all 7 packs.
+- Live region: a separate `aria-live=polite` node (`.exp-sync-live`); the visual banner has no live attribute. During one full cooldown it changed only 3 times (start, "Waiting 5 s", resume), and the paused and "Syncing in another tab" states were each announced once. Not spammy.
+- Waiting tab: re-read the cache every 5 s. Cached workouts went 5, 25, 45, 65 while the other tab synced.
+
+## Quick regression (limiter on)
+- First sync 86 workouts: 24.6 s, limiter peak 40 per 10 s, no block, max in flight 2-3.
+- Second open: exactly 1 list call.
+- Small-deletion purge works.
+- `clearAll` (logout) removed all DBs.
+
+## New trivial items
+- **N9 (Trivial):** when a cooldown ends during the listing phase, the live region announces "Syncing your history… 0 of 0". It should say "Looking up your workouts…".
+- **N10 (Trivial):** a corrupted non-numeric `purgePending.seenAt` confirms a pending purge at once instead of restarting the wait.
+
+## Final acceptance table
+| AC | Final |
+|---|---|
+| 1 Tap an exercise, Back to the same report | PASS |
+| 2 Chart, ranges, tooltip, all-time summary | PASS |
+| 3 Combined / Per side / weightless labels | PASS |
+| 4 Empty, single, table alternative, announcements | PASS |
+| 5 First sync, cache, leave/resume, offline | PASS |
+| 6 Pagination fallback, retry/backoff, concurrency ≤ 3, WAF pacing | PASS |
+| 7 Logout wipe, per-account isolation, deleted workouts leave the index (with confirmation for large purges) | PASS |
+| 8 7 languages, kg/lb, themes, 320/768/1280 | PASS |
+| 9 Tests, external hosts, contrast | PASS |
+| 10 Fixtures, routes, stub | PASS |
+
+## Still not verified
+- Real Cloudflare counting and block behaviour.
+- Two devices behind one IP.
+- A real 5000-row listing.
+- Background-tab timer throttling.
+- Reload while offline and the IndexedDB fallback.
+- Browsers other than Chromium; real screen readers.

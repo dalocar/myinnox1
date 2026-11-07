@@ -462,8 +462,8 @@ table#steps-table td.thumb img, .program-card img.thumb, .action-card img.thumb,
   table#steps-table td.row-actions button { width: 34px; height: 34px; }
   /* progress icon: top-right of the card, left of the row menu; the name leaves room for it */
   table#steps-table td.field .wt-row { display: block; }
-  table#steps-table td.field .step-progress-btn { position: absolute; top: 0; right: 40px; }
-  table#steps-table tr.has-progress td.action-name { padding-right: 92px; }
+  table#steps-table td.field .step-progress-btn { position: absolute; top: 0; right: 46px; }
+  table#steps-table tr.has-progress td.action-name { padding-right: 98px; }
   /* drag handle as a slim strip on the left; up/down hidden on mobile */
   table#steps-table td.reorder { position: absolute; left: 0; top: 0; bottom: 0; width: 30px; display: flex; align-items: center; justify-content: center; padding: 0; }
   table#steps-table .reorder-btn.drag-handle { width: 26px; height: 100%; min-height: 0; border: 0; background: transparent; box-shadow: none; padding: 0; color: var(--muted); border-radius: var(--radius) 0 0 var(--radius); }

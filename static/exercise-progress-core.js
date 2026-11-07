@@ -406,6 +406,14 @@
     const times = [];
     const log = {
       times, cooldownUntil: 0,
+      // A 429 seen by ANY api() call (sync or another screen) starts the tab-wide cooldown:
+      // max(Retry-After, 10 s) + 1..3 s jitter. Returns the new cooldownUntil.
+      noteBlock(retryAfterMs, random) {
+        const ra = num(retryAfterMs), r = typeof random === "function" ? random() : Math.random();
+        const jitter = PACE.jitterMinMs + Math.min(PACE.jitterMaxMs - PACE.jitterMinMs, Math.floor(r * (PACE.jitterMaxMs - PACE.jitterMinMs + 1)));
+        log.cooldownUntil = Math.max(log.cooldownUntil, clock() + Math.max(ra === null ? 0 : ra, PACE.cooldownMs) + jitter);
+        return log.cooldownUntil;
+      },
       record(t) { times.push(t == null ? clock() : t); const cut = clock() - 60000; while (times.length && times[0] <= cut) times.shift(); },
       count(ms, t) { const n = t == null ? clock() : t; let c = 0; for (let i = times.length - 1; i >= 0 && times[i] > n - ms; i--) c++; return c; },
     };
@@ -453,9 +461,7 @@
       const t = clock();
       if (startedAt != null && startedAt < lastBlockAt) return { cooldownMs: Math.max(0, log.cooldownUntil - t), second: false, repeat: true };
       blocks++; lastBlockAt = t; half = true;
-      const ra = num(retryAfterMs);
-      const jitter = PACE.jitterMinMs + Math.min(PACE.jitterMaxMs - PACE.jitterMinMs, Math.floor(random() * (PACE.jitterMaxMs - PACE.jitterMinMs + 1)));
-      log.cooldownUntil = Math.max(log.cooldownUntil, t + Math.max(ra === null ? 0 : ra, PACE.cooldownMs) + jitter);
+      log.noteBlock(retryAfterMs, random);
       return { cooldownMs: log.cooldownUntil - t, second: blocks >= 2, repeat: false };
     }
     return {
@@ -467,6 +473,28 @@
   // N4: a listing that would remove more than max(5, 20 %) of the cache at once is suspicious (an upstream cap or a
   // partial answer): skip that purge.
   const purgeAllowed = (stale, cached) => num(stale) <= Math.max(5, Math.floor(nz(cached) * 0.2));
+  const CONFIRM_MS = 10 * 60 * 1000;
+
+  // N7: a large purge needs confirmation. decidePurge(stale ids, cachedCount, pending {ids, seenAt} | null, now)
+  //   -> {purge: [ids], pending: {ids, seenAt} | null}
+  // Call it only for a complete, non-empty, non-saturated, non-failed listing. Small sets purge at once. A large set is
+  // remembered; it is purged when a later listing at least CONFIRM_MS later still misses the same ids. If any
+  // remembered id is listed again, the pending set is dropped (and the current stale set judged afresh).
+  function decidePurge(stale, cached, pending, now) {
+    const ids = [...new Set((Array.isArray(stale) ? stale : []).map(Number).filter((x) => x > 0))];
+    const t = num(now) === null ? Date.now() : num(now);
+    const missing = new Set(ids);
+    let p = pending && Array.isArray(pending.ids) && pending.ids.length ? pending : null;
+    if (p && !p.ids.every((id) => missing.has(Number(id)))) p = null; // some came back: forget the pending set
+    if (!ids.length) return { purge: [], pending: null };
+    if (purgeAllowed(ids.length, cached)) return { purge: ids, pending: null };
+    if (!p) return { purge: [], pending: { ids, seenAt: t } };
+    if (t - num(p.seenAt) < CONFIRM_MS) return { purge: [], pending: p }; // still waiting for confirmation
+    const confirmed = p.ids.map(Number);
+    const rest = ids.filter((id) => !confirmed.includes(id));
+    const next = rest.length ? decidePurge(rest, cached, null, t) : { purge: [], pending: null };
+    return { purge: confirmed.concat(next.purge), pending: next.pending };
+  }
 
   // ---------- account scoping ----------
   // Non-cryptographic 53-bit hash (cyrb53) so the raw email is never part of the database name.
@@ -492,7 +520,7 @@
     summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions,
     makeWindow, allWindow, bisectWindow, isFull, enumerateRecords, diffIds,
     parseRetryAfter, retryDelay, isRetryable, isTransport, withRetry, makeGate, runPool,
-    PACE, makeRequestLog, requestLog, makePacer, purgeAllowed,
+    PACE, makeRequestLog, requestLog, makePacer, purgeAllowed, decidePurge, CONFIRM_MS,
     accountKey, dbName,
   };
 });

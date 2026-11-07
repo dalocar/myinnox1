@@ -478,3 +478,38 @@ test("withRetry honours isRetryable / delayFor overrides", async () => {
   await assert.rejects(C.withRetry(async () => { n++; throw Object.assign(new Error("x"), { status: 503 }); }, { sleep: async () => {}, isRetryable: () => false }));
   assert.equal(n, 1);
 });
+
+// ---- N7 purge confirmation
+const ids = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+test("N7: a cap-7 listing seen once does not purge (pending only)", () => {
+  const d = C.decidePurge(ids(8, 86), 86, null, 1000);
+  assert.deepEqual(d.purge, []); assert.equal(d.pending.ids.length, 79); assert.equal(d.pending.seenAt, 1000);
+});
+test("N7: 30 of 100 deleted and seen twice 10+ minutes apart purges; earlier than 10 min does not", () => {
+  const first = C.decidePurge(ids(1, 30), 100, null, 0);
+  assert.deepEqual(first.purge, []);
+  const early = C.decidePurge(ids(1, 30), 100, first.pending, C.CONFIRM_MS - 1);
+  assert.deepEqual(early.purge, []); assert.equal(early.pending.seenAt, 0);
+  const later = C.decidePurge(ids(1, 30), 100, early.pending, C.CONFIRM_MS);
+  assert.deepEqual(later.purge, ids(1, 30)); assert.equal(later.pending, null);
+});
+test("N7: a full listing that brings any pending id back clears the pending set and never purges it", () => {
+  const p = C.decidePurge(ids(1, 30), 100, null, 0).pending;
+  const back = C.decidePurge([], 100, p, C.CONFIRM_MS * 2);
+  assert.deepEqual(back, { purge: [], pending: null });
+  const partly = C.decidePurge(ids(2, 30), 100, p, C.CONFIRM_MS * 2); // id 1 came back
+  assert.deepEqual(partly.purge, []); assert.equal(partly.pending.seenAt, C.CONFIRM_MS * 2); // judged afresh
+});
+test("N7: small deletions still purge at once, even with a pending set", () => {
+  assert.deepEqual(C.decidePurge([5, 6], 100, null, 0).purge, [5, 6]);
+  const p = C.decidePurge(ids(1, 30), 100, null, 0).pending;
+  const d = C.decidePurge(ids(1, 30).concat([77, 78]), 100, p, C.CONFIRM_MS);
+  assert.deepEqual(d.purge.sort((a, b) => a - b), ids(1, 30).concat([77, 78]));
+});
+test("a 429 anywhere starts the tab-wide cooldown (requestLog.noteBlock)", () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now);
+  const until = log.noteBlock(null, () => 0);
+  assert.equal(until - c.now(), 11000);
+  assert.equal(log.noteBlock(5000, () => 0), until); // never shortens
+  assert.equal(C.makePacer({ log, now: c.now, sleep: c.sleep }).waitMs(), 11000);
+});

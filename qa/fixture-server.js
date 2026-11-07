@@ -38,6 +38,7 @@ function route(p,q){
 const ep=require("./exercise-progress-routes.js");
 http.createServer((q,r)=>{r.setHeader("Access-Control-Allow-Origin","*");r.setHeader("Access-Control-Expose-Headers","Retry-After");
  const u=new URL(q.url,"http://x");
+ if(ep.wafCheck(q,r,u)) return;
  if(ep.handle(q,r,u)) return;
  const j=route(u.pathname,u.searchParams);
  if(j){r.setHeader("Content-Type","application/json");return r.end(JSON.stringify(j))}

@@ -14,6 +14,12 @@
 //     route   list | detail | action | any (default any)
 //     retryAfter  seconds sent in the Retry-After header (429 only; optional)
 //   Rules stack; each is consumed independently. GET /ep/_reset clears rules, counters and config.
+// Cloudflare-like WAF limiter (off by default): env EP_WAF="60:10:10" or GET /ep/_config?waf=60:10:10 (|off) means
+//   limit:windowSeconds:blockSeconds, counted PER CLIENT IP over EVERY route this server answers (activity routes, /ep data
+//   routes and /ep/_hit, which the stub pings for the calls it answers itself) except the /ep/_ admin routes. Over the
+//   limit -> every request from that IP gets HTTP 429 with an HTML body and NO Retry-After for blockSeconds.
+//   GET /ep/_waf?block=10 forces a block now. /ep/_stats.waf: {limit, windowS, blockS, counted, blocked, blocks, peak, blockedUntil}
+//   where peak = most requests seen in any rolling window.
 // Other helpers: GET /ep/_config?latency=ms&cap=N, GET /ep/_stats -> {total, byRoute, inFlight, maxInFlight, failed, rules, config}.
 //   Default latency is 150 ms so progress and the concurrency limit are observable (EP_LATENCY_MS env).
 const fs = require("fs"), path = require("path");
@@ -30,7 +36,31 @@ function addRule(spec) {
   state.rules.push({ status, left: n === "all" ? Infinity : (n === undefined || n === "" ? 1 : +n), route: route || "any", retryAfter: ra ? +ra : null });
 }
 if (process.env.EP_FAIL) process.env.EP_FAIL.split(",").forEach(addRule);
-function reset() { state.rules = []; state.total = 0; state.byRoute = {}; state.maxInFlight = 0; state.failed = 0; state.config = { latency: +(process.env.EP_LATENCY_MS || 150), cap: +(process.env.EP_LIST_CAP || 100000) }; }
+function reset() { wafReset(); state.rules = []; state.total = 0; state.byRoute = {}; state.maxInFlight = 0; state.failed = 0; state.config = { latency: +(process.env.EP_LATENCY_MS || 150), cap: +(process.env.EP_LIST_CAP || 100000) }; }
+
+// ---- WAF limiter
+const parseWaf = (v) => { if (!v || v === "off") return null; const [l, w, b] = String(v).split(":").map(Number); return l > 0 ? { limit: l, windowS: w || 10, blockS: b || 10 } : null; };
+const waf = { cfg: parseWaf(process.env.EP_WAF), clients: new Map(), counted: 0, blocked: 0, blocks: 0, peak: 0 };
+function wafReset() { waf.clients = new Map(); waf.counted = 0; waf.blocked = 0; waf.blocks = 0; waf.peak = 0; }
+const ADMIN = /^\/ep\/_(reset|fail|config|stats|waf)$/;
+function wafCheck(req, res, url) {
+  if (!waf.cfg || req.method === "OPTIONS" || ADMIN.test(url.pathname)) return false;
+  const ip = req.socket.remoteAddress || "?", now = Date.now();
+  const c = waf.clients.get(ip) || { times: [], until: 0 };
+  waf.clients.set(ip, c);
+  c.times.push(now);
+  const cut = now - waf.cfg.windowS * 1000;
+  while (c.times.length && c.times[0] <= cut) c.times.shift();
+  waf.counted++; waf.peak = Math.max(waf.peak, c.times.length);
+  if (c.until <= now && c.times.length > waf.cfg.limit) { c.until = now + waf.cfg.blockS * 1000; waf.blocks++; }
+  if (c.until > now) {
+    waf.blocked++;
+    res.statusCode = 429; res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.end("<!DOCTYPE html><html><head><title>Access denied | rate limited</title></head><body><h1>Error 1015</h1><p>You are being rate limited.</p></body></html>");
+    return true;
+  }
+  return false;
+}
 
 const routeOf = (p) => (/record\/list$/.test(p) ? "list" : /record\/detail$/.test(p) ? "detail" : /action\/list$/.test(p) ? "action" : "other");
 const json = (res, code, body, headers) => { res.statusCode = code; res.setHeader("Content-Type", "application/json"); Object.entries(headers || {}).forEach(([k, v]) => res.setHeader(k, v)); res.end(JSON.stringify(body)); };
@@ -63,10 +93,16 @@ function handle(req, res, url) {
   }
   if (p === "/_config") {
     if (q.get("latency") != null) state.config.latency = Math.max(0, +q.get("latency") || 0);
+    if (q.get("waf") != null) { waf.cfg = parseWaf(q.get("waf")); wafReset(); }
     if (q.get("cap") != null) state.config.cap = Math.max(1, +q.get("cap") || 100000);
     json(res, 200, state.config); return true;
   }
-  if (p === "/_stats") { json(res, 200, { total: state.total, byRoute: state.byRoute, inFlight: state.inFlight, maxInFlight: state.maxInFlight, failed: state.failed, rules: state.rules, config: state.config }); return true; }
+  if (p === "/_waf") {
+    if (q.get("block") != null && waf.cfg) { const c = waf.clients.get(req.socket.remoteAddress || "?") || { times: [], until: 0 }; c.until = Date.now() + (+q.get("block") || waf.cfg.blockS) * 1000; waf.clients.set(req.socket.remoteAddress || "?", c); waf.blocks++; }
+    json(res, 200, { ok: !!waf.cfg }); return true;
+  }
+  if (p === "/_hit") { res.statusCode = 204; res.end(); return true; }
+  if (p === "/_stats") { json(res, 200, { waf: waf.cfg ? Object.assign({}, waf.cfg, { counted: waf.counted, blocked: waf.blocked, blocks: waf.blocks, peak: waf.peak, blockedUntil: Math.max(0, ...[...waf.clients.values()].map((c) => c.until)) }) : null, total: state.total, byRoute: state.byRoute, inFlight: state.inFlight, maxInFlight: state.maxInFlight, failed: state.failed, rules: state.rules, config: state.config }); return true; }
   const route = routeOf(p), body = data(p, q);
   if (!body) { json(res, 404, bad("no such route")); return true; }
   state.total++; state.byRoute[route] = (state.byRoute[route] || 0) + 1;
@@ -83,4 +119,4 @@ function handle(req, res, url) {
   }, state.config.latency);
   return true;
 }
-module.exports = { handle };
+module.exports = { handle, wafCheck };

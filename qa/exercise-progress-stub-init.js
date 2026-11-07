@@ -14,6 +14,8 @@
 //   #latency=400           fixture server latency per data call in ms (default 150)
 //   #fail=429:5[:route[:retryAfter]]   inject failures (see qa/exercise-progress-routes.js); route = list|detail|action|any
 //                          e.g. #fail=429:5::2 -> five 429 answers with Retry-After: 2 ; #fail=500:all:detail -> every detail call 500
+//   #waf=60:10:10          turn on the fixture server's Cloudflare-like limiter (60 per 10 s per IP, 10 s block, HTML 429, no
+//                          Retry-After). Calls the stub answers itself are reported to it via /ep/_hit so they are counted too.
 //   #emptylist             /sport/record/list answers 200 with [] (a cached history must survive it)
 //   #nolibrary             /action/list answers 500 (modes unknown: no labels, chart the stored value)
 //   #offline               start offline (every /api call rejects, navigator.onLine=false)
@@ -49,7 +51,8 @@
   // Configure the fixture server once (failure injection, latency, cap) before any data call goes out.
   const ready = (async () => {
     try {
-      if (P.has("fail") || P.has("cap") || P.has("latency")) await real(F + "ep/_reset");
+      if (P.has("fail") || P.has("cap") || P.has("latency") || P.has("waf")) await real(F + "ep/_reset");
+      if (P.get("waf")) await real(F + "ep/_config?waf=" + encodeURIComponent(P.get("waf")));
       if (P.get("cap")) await real(F + "ep/_config?cap=" + encodeURIComponent(P.get("cap")));
       if (P.get("latency")) await real(F + "ep/_config?latency=" + encodeURIComponent(P.get("latency")));
       if (P.get("fail")) {
@@ -66,6 +69,8 @@
     if (off) throw new TypeError("Failed to fetch");
     await ready;
     const [pp, qs] = s.split("?"), p = pp.replace(/^\/api/, "");
+    const forwarded = ["/sport/record/list", "/sport/record/detail", "/action/list", "/sport/record/statistics/list", "/app/statistics", "/sport/record/badge/list"].includes(p);
+    if (!forwarded && P.has("waf")) { const h = await real(F + "ep/_hit"); if (h.status === 429) return new Response(await h.text(), { status: 429, headers: { "Content-Type": "text/html" } }); }
     if (method !== "GET" && /\/sport\/record\/delete\//.test(p)) return ok(null);
     if (p === "/app/getInfo") return ok({ nickName: "QA", birthday: "1990-05-01", sex: 1, unit: P.has("imperial") ? 1 : 0, trainingTime: 30 });
     if (p === "/action/list" && P.has("nolibrary")) return json({ code: 500, success: false, msg: "library down", data: null }, 500);

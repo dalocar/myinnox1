@@ -595,5 +595,10 @@
     "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "Ultimo {latest}, record personale {best} il {date}, {n} sessioni, variazione dalla prima {change}",
     "Progress summary": "Riepilogo dei progressi",
     "Syncing history": "Sincronizzazione dello storico",
+    "{n} in this range": "{n} in questo intervallo",
+    "No history is saved on this device yet.": "Nessuno storico è ancora salvato su questo dispositivo.",
+    "You are offline, and no history is saved on this device yet.": "Sei offline e nessuno storico è ancora salvato su questo dispositivo.",
+    "Some history may be missing: the server limits how many workouts it returns.": "Potrebbe mancare parte dello storico: il server limita il numero di allenamenti restituiti.",
+    "The server is busy or unreachable. Try again in a moment.": "Il server è occupato o non raggiungibile. Riprova tra un momento.",
   },
 };

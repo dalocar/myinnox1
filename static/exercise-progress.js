@@ -37,6 +37,11 @@
     "{name}: {metric}. Line chart. {summary}": "{name}: {metric}. Gráfico de líneas. {summary}",
     "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "Último {latest}, mejor marca {best} el {date}, {n} sesiones, cambio desde el primero {change}",
     "Progress summary": "Resumen del progreso",
+    "{n} in this range": "{n} en este periodo",
+    "No history is saved on this device yet.": "Todavía no hay historial guardado en este dispositivo.",
+    "You are offline, and no history is saved on this device yet.": "Sin conexión, y aún no hay historial guardado en este dispositivo.",
+    "Some history may be missing: the server limits how many workouts it returns.": "Puede faltar historial: el servidor limita cuántos entrenamientos devuelve.",
+    "The server is busy or unreachable. Try again in a moment.": "El servidor está ocupado o no responde. Inténtalo de nuevo en un momento.",
     "Syncing history": "Sincronizando historial",
   });
 
@@ -170,7 +175,13 @@
   }
 
   // ---------- sync ----------
-  function setSync(patch) { Object.assign(S.sync, patch); renderSync(); }
+  function setSync(patch) {
+    const prev = S.sync.status;
+    Object.assign(S.sync, patch);
+    // A state change (error, offline, paused, done) also changes what the chart card may say.
+    if (patch.status && patch.status !== prev && patch.status !== "listing" && patch.status !== "fetching") scheduleRender(true);
+    else renderSync();
+  }
 
   async function listWindow(win, run) {
     const q = `/sport/record/list?startTime=${encodeURIComponent(win.start)}&endTime=${encodeURIComponent(win.end)}&size=${SIZE()}`;
@@ -200,14 +211,17 @@
     if (offline()) { setSync({ status: "offline", msg: "" }); return; }
     setSync({ status: "listing", done: 0, total: 0, failed: 0, msg: "" });
     fetchLibrary(store);
-    let enumerated;
+    let enumerated, meta = {}, fullWalk = true;
     try {
-      const meta = (await store.getMeta("sync")) || {};
+      meta = (await store.getMeta("sync")) || {};
+      // After a complete sync only the newest window is re-listed, except once a day: that walk covers every
+      // year so workouts deleted elsewhere are purged too.
+      fullWalk = !(meta.complete && meta.fullAt && Date.now() - meta.fullAt < 24 * 3600 * 1000);
       const have = S.workouts;
       enumerated = await Core.enumerateRecords({
         today: today(), size: SIZE(),
         fetchWindow: (w) => listWindow(w, run),
-        stopWhenKnown: meta.complete ? (rows) => rows.every((r) => have.has(Number(r.sportRecordId))) : null,
+        stopWhenKnown: !fullWalk ? (rows) => rows.every((r) => have.has(Number(r.sportRecordId))) : null,
       });
     } catch (e) {
       if (stopped()) return;
@@ -217,10 +231,11 @@
     }
     if (stopped()) return;
     const cached = new Map([...S.workouts].map(([id, w]) => [id, w.startTime]));
-    const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.coveredFrom });
+    // Purge only from windows that were listed completely (never from a saturated, possibly cut listing).
+    const diff = Core.diffIds(enumerated.rows, cached, { coveredFrom: enumerated.saturated ? null : enumerated.coveredFrom });
     for (const id of diff.stale) { S.workouts.delete(id); store.del(id).catch(() => {}); }
     if (diff.stale.length) scheduleRender(true);
-    setSync({ status: "fetching", done: 0, total: diff.toFetch.length, failed: 0, msg: "" });
+    setSync({ status: "fetching", done: 0, total: diff.toFetch.length, failed: 0, msg: "", saturated: !!enumerated.saturated });
     let lastErr = "";
     const res = await Core.runPool(diff.toFetch, async (row) => {
       await gate.wait();
@@ -249,8 +264,9 @@
     });
     if (stopped()) return;
     S.sync.failed = res.failed;
-    if (res.paused) { setSync({ status: "paused", msg: lastErr }); scheduleRender(true); return; }
-    if (res.failed === 0) await store.setMeta("sync", { complete: true, at: Date.now() });
+    if (res.paused) { setSync({ status: "paused", msg: lastErr }); return; }
+    const ok = res.failed === 0 && !enumerated.saturated; // never "complete" while a one-day window is still cut
+    await store.setMeta("sync", { complete: ok, at: Date.now(), fullAt: ok && fullWalk ? Date.now() : (ok ? meta.fullAt : 0) });
     S.announce = "sync";
     setSync({ status: "done", msg: "" });
     scheduleRender(true);
@@ -278,7 +294,11 @@
   function fmtPct(v) {
     try { return new Intl.NumberFormat(LANG(), { maximumFractionDigits: 1 }).format(v); } catch (e) { return String(v); }
   }
+  function fmtDate(iso) {
+    try { const d = Core.parseDate(iso); return new Intl.DateTimeFormat(LANG(), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(Date.UTC(d.y, d.m - 1, d.d))); } catch (e) { return iso; }
+  }
   function changeText(s) {
+    if (s.summary.sessions < 2) return "—"; // one session: nothing to compare yet
     const c = s.summary.change, sign = c.abs > 0 ? "+" : c.abs < 0 ? "−" : "";
     const mag = Math.abs(c.abs);
     const abs = s.kind === "weight" ? `${fmtW(mag)} ${unitLabel()}` : fmtN(mag) + (s.kind === "seconds" ? " s" : "");
@@ -288,7 +308,7 @@
   function summaryText(s) {
     if (!s.summary) return "";
     return t("Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}", {
-      latest: val(s, s.summary.latest.value), best: val(s, s.summary.best.value), date: s.summary.best.date, n: s.summary.sessions, change: changeText(s),
+      latest: val(s, s.summary.latest.value), best: val(s, s.summary.best.value), date: fmtDate(s.summary.best.date), n: s.summary.sessions, change: changeText(s),
     });
   }
 
@@ -351,6 +371,7 @@
     const det = el("details", "exp-data");
     const sum = el("summary", null, t("Data table"));
     const tw = el("div", "exp-tablewrap");
+    tw.tabIndex = 0; tw.setAttribute("role", "region"); tw.setAttribute("aria-label", t("Data table"));
     det.append(sum, tw);
     root.append(bar, syncBox, live, ranges, stats, card, det);
     nodes = { root, title: h, sub, syncBox, live, ranges, stats, card, ch, note, msg, wrap, canvas, det, tw };
@@ -359,6 +380,7 @@
   function renderSync() {
     if (!nodes || !S.open) return;
     const sy = S.sync, box = nodes.syncBox;
+    const hadFocus = box.contains(document.activeElement);
     box.textContent = "";
     box.classList.remove("is-error");
     if (sy.status === "listing" || sy.status === "fetching") {
@@ -377,7 +399,7 @@
       }
     } else if (sy.status === "paused") {
       box.hidden = false; box.classList.add("is-error");
-      box.appendChild(el("p", "exp-sync-text", t("Sync paused: {msg}", { msg: sy.msg || t("Could not load your workout history") })));
+      box.appendChild(el("p", "exp-sync-text", t("Sync paused: {msg}", { msg: t("The server is busy or unreachable. Try again in a moment.") })));
       box.appendChild(el("p", "exp-sync-sub", t("Syncing your history… {done} of {total}", { done: sy.done, total: sy.total })));
       const b = el("button", "secondary", t("Resume")); b.type = "button";
       b.addEventListener("click", () => { startSync(); });
@@ -392,14 +414,19 @@
       box.appendChild(b);
     } else if (sy.status === "offline" || sy.status === "stale") {
       box.hidden = false;
-      box.appendChild(el("p", "exp-sync-text", sy.status === "offline" ? t("You are offline. Showing the data saved on this device.") : t("Could not refresh. Showing the data saved on this device.")));
-    } else if (sy.status === "done" && sy.failed > 0) {
+      const saved = S.workouts.size > 0;
+      box.appendChild(el("p", "exp-sync-text", sy.status === "offline"
+        ? (saved ? t("You are offline. Showing the data saved on this device.") : t("You are offline, and no history is saved on this device yet."))
+        : (saved ? t("Could not refresh. Showing the data saved on this device.") : t("Could not load your workout history"))));
+    } else if (sy.status === "done" && (sy.failed > 0 || sy.saturated)) {
       box.hidden = false;
-      box.appendChild(el("p", "exp-sync-text", t("{n} workouts could not be loaded and will be retried next time.", { n: sy.failed })));
+      if (sy.failed > 0) box.appendChild(el("p", "exp-sync-text", t("{n} workouts could not be loaded and will be retried next time.", { n: sy.failed })));
+      if (sy.saturated) { box.classList.add("is-error"); box.appendChild(el("p", "exp-sync-text", t("Some history may be missing: the server limits how many workouts it returns."))); }
     } else {
       box.hidden = true;
     }
     if (sy.status !== "error") box.removeAttribute("role");
+    if (hadFocus && !box.contains(document.activeElement)) { const b = box.querySelector("button"); (b || nodes.title).focus({ preventScroll: true }); }
   }
 
   function stat(label, value, sub) {
@@ -510,14 +537,15 @@
 
     // summary stats
     nodes.stats.textContent = "";
-    nodes.stats.hidden = s.isEmpty;
-    if (!s.isEmpty) {
+    nodes.stats.hidden = !s.hasAny;
+    if (s.hasAny) {
+      // All-time figures: the range only narrows the chart (and the "in this range" count).
       const sm = s.summary;
       nodes.stats.append(
-        stat(t("Latest"), val(s, sm.latest.value), sm.latest.date),
-        stat(t("Personal best"), val(s, sm.best.value), sm.best.date),
-        stat(t("Sessions"), String(sm.sessions)),
-        stat(t("Change since first"), changeText(s), sm.first.date)
+        stat(t("Latest"), val(s, sm.latest.value), fmtDate(sm.latest.date)),
+        stat(t("Personal best"), val(s, sm.best.value), fmtDate(sm.best.date)),
+        stat(t("Sessions"), String(sm.sessions), S.range === "All" ? "" : t("{n} in this range", { n: sm.rangeSessions })),
+        stat(t("Change since first"), changeText(s), fmtDate(sm.first.date))
       );
     }
 
@@ -527,10 +555,16 @@
     nodes.note.hidden = !s.showTotal;
     const syncing = S.sync.status === "listing" || S.sync.status === "fetching";
     let message = "";
-    if (!s.hasAny) message = syncing ? t("Loading…") : (S.sync.status === "idle" ? t("Loading…") : t("No history for this exercise yet"));
+    const st = S.sync.status;
+    if (!s.hasAny) {
+      if (syncing || st === "idle") message = t("Loading…");
+      else if (st === "done") message = t("No history for this exercise yet");
+      else if (st === "offline" || st === "stale") message = S.workouts.size ? t("No history for this exercise yet") : t("No history is saved on this device yet.");
+      else message = ""; // error / paused: the banner above says what happened
+    }
     else if (s.isEmpty) message = t("No workouts in this range. Try a longer range.");
     else if (s.isSingle) message = t("Only one workout so far. Train again to see a trend.");
-    const sub2 = !s.hasAny && !syncing && S.sync.status !== "idle" ? t("Complete a workout with this exercise and it will show up here.") : "";
+    const sub2 = !s.hasAny && st === "done" ? t("Complete a workout with this exercise and it will show up here.") : "";
     nodes.msg.textContent = "";
     if (message) { nodes.msg.appendChild(el("span", "exp-msg-main", message)); if (sub2) nodes.msg.appendChild(el("span", "exp-msg-sub", sub2)); }
     nodes.msg.hidden = !message;
@@ -649,7 +683,17 @@
     try { localStorage.removeItem(DB_REGISTRY); } catch (e) { /* ignore */ }
   }
 
-  const rerender = () => { if (S.open && nodes) render(false); };
+  // Unit / language switch rebuilds the screen: keep the open data table and put focus back where it was.
+  const rerender = () => {
+    if (!S.open || !nodes) return;
+    const a = document.activeElement, inside = nodes.root.contains(a);
+    const range = inside && a.dataset ? a.dataset.range : null, wasOpen = nodes.det.open;
+    const sum = inside && a.tagName === "SUMMARY";
+    render(false);
+    nodes.det.open = wasOpen;
+    const target = (range && nodes.ranges.querySelector('[data-range="' + range + '"]')) || (sum && nodes.det.querySelector("summary")) || (inside && nodes.title);
+    if (target) target.focus({ preventScroll: true });
+  };
   if (window.I18N && Array.isArray(I18N.onChange)) I18N.onChange.push(rerender);
   if (window.Units) Units.onChange(rerender);
   document.addEventListener("themechange", () => { if (S.open && nodes) renderData(); });

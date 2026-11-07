@@ -55,11 +55,13 @@
 .exp-table tbody th { text-align: left; font-weight: 500; }
 .exp-table th:first-child { text-align: left; }
 
-/* Training Report: exercise name as a link-button into the progress screen */
-.rp-group-link { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; color: var(--text); font: inherit; font-weight: 700; overflow-wrap: anywhere; min-height: 32px; border-radius: 6px; }
-.rp-group-link:hover { color: var(--primary); text-decoration: underline; }
+/* Training Report: exercise name as a visible link-button into the progress screen */
+.rp-group-link { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; color: var(--primary); font: inherit; font-weight: 700; overflow-wrap: anywhere; min-height: 32px; border-radius: 6px; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.rp-group-link:hover { color: var(--primary-hover); text-decoration-thickness: 2px; }
 .rp-group-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.rp-group-link svg { width: 16px; height: 16px; flex: none; color: var(--primary); }
+.rp-group-link svg { width: 18px; height: 18px; flex: none; }
+@media (max-width: 767px), (pointer: coarse) { .rp-group-link { min-height: 44px; } }
+.exp-tablewrap:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (min-width: 768px) {
   .exp-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }

@@ -599,5 +599,10 @@
     "Latest {latest}, personal best {best} on {date}, {n} sessions, change since first {change}": "最新 {latest}、自己ベスト {best}（{date}）、{n}回、初回からの変化 {change}",
     "Progress summary": "進捗のまとめ",
     "Syncing history": "履歴を同期中",
+    "{n} in this range": "この期間：{n}件",
+    "No history is saved on this device yet.": "この端末にはまだ履歴が保存されていません。",
+    "You are offline, and no history is saved on this device yet.": "オフラインで、この端末にはまだ履歴が保存されていません。",
+    "Some history may be missing: the server limits how many workouts it returns.": "履歴の一部が欠けている可能性があります。サーバーが返すトレーニング数に上限があります。",
+    "The server is busy or unreachable. Try again in a moment.": "サーバーが混み合っているか、接続できません。しばらくしてからもう一度お試しください。",
   },
 };

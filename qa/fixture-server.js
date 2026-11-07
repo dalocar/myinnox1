@@ -1,4 +1,4 @@
-// QA only: serves qa/fixtures with CORS on :8799 so the stubbed fetch can read them.
+// QA only: serves qa/fixtures with CORS on :8799 (PORT env overrides) so the stubbed fetch can read them.
 // 1) Static: GET /<name>.json -> qa/fixtures/<name>.json (unchanged).
 // 2) Activity API routes (path with or without the /api prefix), built from the real payloads:
 //    sport/record/statistics/list?statisticsType=1|2[&startTime=YYYY-MM-DD&endTime=YYYY-MM-DD]
@@ -7,6 +7,7 @@
 //    app/statistics -> totals.json | sport/record/badge/list -> badges.json
 //    sport/record/detail?recordId=22401 -> record-detail-22401.json (other id -> code 500)
 //    sport/record/list -> records-list.json
+// 3) Exercise Progress: everything under /ep/ (see qa/exercise-progress-routes.js, incl. failure injection).
 const http=require("http"),fs=require("fs"),path=require("path");
 const FX=path.join(__dirname,"fixtures"),rd=(n)=>JSON.parse(fs.readFileSync(path.join(FX,n),"utf8"));
 const fail=(msg)=>({code:500,msg,traceId:"fixture",data:null,error:true,success:false,warn:false});
@@ -34,8 +35,12 @@ function route(p,q){
   if(p==="/sport/record/detail") return q.get("recordId")==="22401"?rd("record-detail-22401.json"):fail("record not found");
   return null;
 }
-http.createServer((q,r)=>{r.setHeader("Access-Control-Allow-Origin","*");
- const u=new URL(q.url,"http://x"),j=route(u.pathname,u.searchParams);
+const ep=require("./exercise-progress-routes.js");
+http.createServer((q,r)=>{r.setHeader("Access-Control-Allow-Origin","*");r.setHeader("Access-Control-Expose-Headers","Retry-After");
+ const u=new URL(q.url,"http://x");
+ if(ep.wafCheck(q,r,u)) return;
+ if(ep.handle(q,r,u)) return;
+ const j=route(u.pathname,u.searchParams);
  if(j){r.setHeader("Content-Type","application/json");return r.end(JSON.stringify(j))}
  const f=path.join(FX,path.basename(u.pathname));
- fs.readFile(f,(e,d)=>{if(e){r.statusCode=404;return r.end("no")}r.setHeader("Content-Type","application/json");r.end(d)})}).listen(8799);
+ fs.readFile(f,(e,d)=>{if(e){r.statusCode=404;return r.end("no")}r.setHeader("Content-Type","application/json");r.end(d)})}).listen(+process.env.PORT||8799);

@@ -33,6 +33,10 @@ function toast(msg, isErr) {
 }
 
 async function api(path, opts = {}) {
+  // Every request is counted in the shared sliding log the Exercise Progress sync paces itself against (Cloudflare
+  // rule: 60 per 10 s per IP). Paced sync calls record themselves when they get their slot (`paced: true`).
+  if (opts.paced) { opts = Object.assign({}, opts); delete opts.paced; }
+  else if (window.ExerciseProgressCore && ExerciseProgressCore.requestLog) ExerciseProgressCore.requestLog.record();
   const token = store.get(TOKEN_KEY);
   // FormData must go without a Content-Type so the browser adds the multipart boundary.
   const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
@@ -53,6 +57,15 @@ async function api(path, opts = {}) {
     const msg = (body && (body.msg || body.proxyError)) || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.body = body;
+    if (!res.ok) { // lets callers (Exercise Progress) retry 429/5xx and honour Retry-After
+      err.status = res.status;
+      const ra = res.headers && res.headers.get && res.headers.get("Retry-After");
+      if (ra) err.retryAfterRaw = ra;
+      // Any 429 (Cloudflare WAF block, whatever the body) starts the tab-wide Exercise Progress sync cooldown.
+      if (res.status === 429 && window.ExerciseProgressCore && ExerciseProgressCore.requestLog) {
+        ExerciseProgressCore.requestLog.noteBlock(ExerciseProgressCore.parseRetryAfter(ra));
+      }
+    }
     throw err;
   }
   return body;
@@ -72,9 +85,11 @@ function showLoggedIn(email) {
   $("main-section").hidden = false;
   currentEmail = email;
   $("userbar").innerHTML = `<span id="user-email">${escapeHtml(email)}</span> <button id="logout-btn" class="secondary">${escapeHtml(t("Log out"))}</button>`;
-  $("logout-btn").onclick = () => {
+  $("logout-btn").onclick = async () => {
     store.remove(TOKEN_KEY);
     store.remove(EMAIL_KEY);
+    // Wipe the on-device Exercise Progress cache (bounded wait so a stuck database never blocks logout).
+    try { if (window.ExerciseProgressUI) await Promise.race([ExerciseProgressUI.clearAll(), new Promise((r) => setTimeout(r, 2000))]); } catch (e) { /* reload anyway */ }
     location.reload();
   };
 }
@@ -1029,6 +1044,7 @@ async function deleteRecord(id) {
   try {
     await api(`/sport/record/delete/${id}`, { method: "POST" });
     toast(t("Deleted."));
+    if (window.ExerciseProgressUI) ExerciseProgressUI.forgetWorkout(id);
     loadHistory();
   } catch (e) {
     toast(t("Delete failed: {msg}", { msg: e.message }), true);

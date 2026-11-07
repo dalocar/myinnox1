@@ -1,0 +1,20 @@
+{
+ "code": 200,
+ "msg": "OK",
+ "traceId": "fixture",
+ "success": true,
+ "data": [
+  {
+   "id": 9001,
+   "name": "My Cable Pullover",
+   "actionNo": "",
+   "actionType": 3,
+   "picUrl": "",
+   "custom": true,
+   "sideNum": 2,
+   "countType": 1,
+   "sideWeight": 0,
+   "consume": 8
+  }
+ ]
+}

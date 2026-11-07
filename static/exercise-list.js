@@ -44,7 +44,8 @@
   // L survives the trip to Exercise Progress and back (search text, sort, scroll, last row); open() starts fresh.
   const L = { open: false, query: "", sort: Core.DEFAULT_SORT, onBack: null, scrollY: 0, lastId: "", focusQ: false, renderTimer: 0, searchTimer: 0, shown: false };
   let nodes = null;
-  const listener = { data: (now) => scheduleRows(now), sync: () => paintBanner() };
+  // A status change (error, paused, done...) reaches us as data(true): repaint the banner with the rows.
+  const listener = { data: (now) => { scheduleRows(now); if (now) paintBanner(); }, sync: () => paintBanner() };
 
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const unit = () => (window.Units ? Units.get() : 0);

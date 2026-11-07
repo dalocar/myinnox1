@@ -146,6 +146,72 @@
     return [...by.values()].map(({ _t, ...o }) => o).sort((a, b) => (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : String(a.name).localeCompare(String(b.name))));
   }
 
+  // ---------- Phase 2: the exercise list ----------
+  // fold(text): case- and accent-insensitive key for search (NFD, combining marks removed, lower case, spaces collapsed).
+  const fold = (s) => {
+    let x = String(s == null ? "" : s);
+    try { x = x.normalize("NFD").replace(/\p{M}/gu, ""); } catch (e) { /* old engine: keep as is */ }
+    return x.toLowerCase().replace(/\s+/g, " ").trim();
+  };
+  const SORTS = ["recent", "sessions", "name"];
+  const DEFAULT_SORT = "recent";
+  const pick = (src, id) => {
+    if (!src) return undefined;
+    if (typeof src === "function") return src(id);
+    if (typeof Map !== "undefined" && src instanceof Map) return src.get(id);
+    return typeof src === "object" ? src[id] : undefined;
+  };
+
+  // listExercises(index, {query, sort, lang, names, modeFor}) -> {total, rows}
+  //  names:   Map | object | fn  actionId -> name in the current language (library); falls back to the name stored in the index
+  //  modeFor: fn(actionId) -> {sideNum, countType} | null   (library join, same as the detail screen)
+  //  rows:    [{actionId, name, indexName, sessions, lastDate, kind, modeKey, best:{value,date}|null, latest, first,
+  //             change:{abs,pct}|null, trend: "up"|"down"|"same"|"single"|"none"}]
+  //  Figures follow the detail screen (all-time `buildSeries` summary: sessions with a chartable value, personal best, latest
+  //  vs first). An exercise whose sets never have a chartable value (e.g. only 0 kg warm-ups) is listed with its raw
+  //  workout count, no best and trend "none". total = rows before the query filter.
+  function listExercises(index, opts) {
+    const o = opts || {};
+    const groups = new Map();
+    for (const w of workoutsOf(index)) {
+      for (const id of Object.keys(w.exercises)) {
+        const g = groups.get(id) || { ws: [], raw: 0, rawLast: "", rawT: "", name: "" };
+        const ex = w.exercises[id];
+        g.ws.push(w); g.raw += 1;
+        const tt = String(w.startTime || w.date || "");
+        if (tt >= g.rawT) { g.rawT = tt; g.rawLast = w.date || tt.slice(0, 10); if (ex && ex.actionName) g.name = String(ex.actionName); }
+        groups.set(id, g);
+      }
+    }
+    const all = [];
+    for (const [id, g] of groups) {
+      const mode = pick(o.modeFor, id) || null;
+      const s = buildSeries(g.ws, id, { mode, range: "All" });
+      const lib = pick(o.names, id);
+      const name = (lib != null && String(lib).trim() ? String(lib) : g.name) || "";
+      const sm = s.summary;
+      let trend = "none";
+      if (sm) trend = sm.sessions < 2 ? "single" : sm.change.abs > 0 ? "up" : sm.change.abs < 0 ? "down" : "same";
+      all.push({
+        actionId: id, name, indexName: g.name, sessions: sm ? sm.sessions : g.raw, lastDate: sm ? sm.latest.date : g.rawLast,
+        kind: s.kind, modeKey: s.modeKey, best: sm ? sm.best : null, latest: sm ? sm.latest : null, first: sm ? sm.first : null,
+        change: sm && sm.sessions >= 2 ? sm.change : null, trend,
+      });
+    }
+    const q = fold(o.query);
+    const rows = q ? all.filter((r) => fold(r.name).includes(q)) : all;
+    const lang = o.lang || undefined;
+    const byName = (a, b) => {
+      let c = 0;
+      try { c = String(a.name).localeCompare(String(b.name), lang, { sensitivity: "base", numeric: true }); } catch (e) { c = String(a.name).localeCompare(String(b.name)); }
+      return c || (a.actionId < b.actionId ? -1 : a.actionId > b.actionId ? 1 : 0);
+    };
+    const byRecent = (a, b) => (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : byName(a, b));
+    const sort = SORTS.includes(o.sort) ? o.sort : DEFAULT_SORT;
+    rows.sort(sort === "name" ? byName : sort === "sessions" ? (a, b) => b.sessions - a.sessions || byRecent(a, b) : byRecent);
+    return { total: all.length, rows };
+  }
+
   // buildSeries(index, actionId, {range, today, mode}) ->
   //  {actionId, name, kind, modeKey ("per-side"|"combined"|"none"|"unknown"), showTotal, range, cutoff,
   //   hasAny (any point at all, ignoring the range), isEmpty (no point in range), isSingle (exactly one),
@@ -470,6 +536,26 @@
     };
   }
 
+  // ---------- Phase 3: background warm-up gate ----------
+  const WARM_EVERY_MS = 30 * 60 * 1000, WARM_DELAY_MS = 5000, WARM_MAX_FETCH = 30;
+  // warmupDecision({loggedIn, hasFullSync, lastRunAt, now, everyMs, online, hidden, saveData, foreground, cooldownLeft})
+  //  -> {run: true} | {run: false, reason, wait: "visible"|"online"|"cooldown"|"later"|null, ms}
+  // Incremental only: a first sync is never started in the background. Reasons are stable strings used by the QA log.
+  function warmupDecision(s) {
+    const x = s || {};
+    const no = (reason, wait, ms) => ({ run: false, reason, wait: wait || null, ms: ms || 0 });
+    if (!x.loggedIn) return no("logged-out");
+    if (x.saveData) return no("save-data");
+    if (x.foreground) return no("foreground");
+    if (x.online === false) return no("offline", "online");
+    if (x.hidden) return no("hidden", "visible");
+    if (!x.hasFullSync) return no("no-full-sync");
+    const every = num(x.everyMs) === null ? WARM_EVERY_MS : Math.max(0, num(x.everyMs)), last = num(x.lastRunAt), now = num(x.now) === null ? Date.now() : num(x.now);
+    if (last !== null && last <= now && now - last < every) return no("recent", "later", every - (now - last));
+    if (num(x.cooldownLeft) > 0) return no("cooldown", "cooldown", num(x.cooldownLeft));
+    return { run: true, reason: "ok", wait: null, ms: 0 };
+  }
+
   // N4: a listing that would remove more than max(5, 20 %) of the cache at once is suspicious (an upstream cap or a
   // partial answer): skip that purge.
   const purgeAllowed = (stale, cached) => num(stale) <= Math.max(5, Math.floor(nz(cached) * 0.2));
@@ -522,7 +608,8 @@
   return {
     SCHEMA, RANGES, DEFAULT_RANGE, LIST_SIZE, LIST_FROM, LIST_TO, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
     parseDate, localISO, dayNumber, fromDayNumber, addDays, addMonths, parseStart, stamp,
-    summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions,
+    summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions, fold, listExercises, SORTS, DEFAULT_SORT,
+    warmupDecision, WARM_EVERY_MS, WARM_DELAY_MS, WARM_MAX_FETCH,
     makeWindow, allWindow, bisectWindow, isFull, enumerateRecords, diffIds,
     parseRetryAfter, retryDelay, isRetryable, isTransport, withRetry, makeGate, runPool,
     PACE, makeRequestLog, requestLog, makePacer, purgeAllowed, decidePurge, CONFIRM_MS,

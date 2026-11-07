@@ -88,6 +88,7 @@ function showLoggedIn(email) {
   $("logout-btn").onclick = async () => {
     store.remove(TOKEN_KEY);
     store.remove(EMAIL_KEY);
+    if (window.ExerciseProgressUI) ExerciseProgressUI.warmUp.stop(); // background warm-up ends with the session
     // Wipe the on-device Exercise Progress cache (bounded wait so a stuck database never blocks logout).
     try { if (window.ExerciseProgressUI) await Promise.race([ExerciseProgressUI.clearAll(), new Promise((r) => setTimeout(r, 2000))]); } catch (e) { /* reload anyway */ }
     location.reload();
@@ -347,7 +348,34 @@ function weightCell(step, i) {
   const total = combined ? `<span class="wm-total" id="step-${i}-total" aria-live="polite">${escapeHtml(combinedTotalText(step))}</span>` : "";
   const aria = Units.text(t(combined ? "Load per cable (kg)" : "Load (kg)"));
   const describedBy = [mode.label ? `step-${i}-wm` : "", combined ? `step-${i}-total` : ""].filter(Boolean).join(" ");
-  return `<input type="number" min="0" step="0.1" id="step-${i}-sideWeight" name="step-${i}-sideWeight" data-field="sideWeight" aria-label="${escapeHtml(aria)}"${combined ? ` title="${escapeHtml(aria)}"` : ""}${describedBy ? ` aria-describedby="${describedBy}"` : ""}${mode.hasWeight ? "" : " disabled"} value="${Units.fmtTenths(step.sideWeight ?? 0)}">${badge}${total}`;
+  const input = `<input type="number" min="0" step="0.1" id="step-${i}-sideWeight" name="step-${i}-sideWeight" data-field="sideWeight" aria-label="${escapeHtml(aria)}"${combined ? ` title="${escapeHtml(aria)}"` : ""}${describedBy ? ` aria-describedby="${describedBy}"` : ""}${mode.hasWeight ? "" : " disabled"} value="${Units.fmtTenths(step.sideWeight ?? 0)}">`;
+  return (hasProgressIcon(step) ? `<span class="wt-row">${input}${progressButton(step, i)}</span>` : input) + `${badge}${total}`;
+}
+
+// Exercise Progress shortcut next to the load input: only for steps that have a weight (sideNum 1 or 2, or an unknown
+// mode with a weight set) and a known action. sideNum 0 steps (no weight) get none.
+// A course step points at its library action with actionLibraryId; workout sets use the same number as actionId.
+function stepActionId(step) {
+  const id = step.actionLibraryId != null && step.actionLibraryId !== "" ? step.actionLibraryId : step.actionId;
+  return id != null && Number(id) > 0 ? String(Number(id)) : "";
+}
+function hasProgressIcon(step) {
+  if (!window.ExerciseProgressUI || !stepActionId(step)) return false;
+  const mode = WeightModeCore.modeFor(step.sideNum);
+  return mode.key === "unknown" ? Number(step.sideWeight) > 0 : mode.hasWeight;
+}
+const PROGRESS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18M5 16l4-5 4 3 6-8M15 6h4v4"/></svg>';
+function progressButton(step, i) {
+  const label = t("Progress for {name}", { name: step.actionName || t("step {n}", { n: i + 1 }) });
+  return `<button type="button" class="secondary step-progress-btn" id="step-${i}-progress" data-step-progress="${i}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${PROGRESS_ICON}</button>`;
+}
+// Opens Exercise Progress ABOVE the editor (an overlay): the editor, its unsaved edits and its scroll position are never
+// touched, so Back is just closing the layer and putting focus back on the icon.
+function openStepProgress(step, i) {
+  ExerciseProgressUI.open(stepActionId(step), {
+    name: step.actionName || "", overlay: true,
+    onBack: () => { const b = $(`step-${i}-progress`); (b || $("edit-name")).focus({ preventScroll: true }); },
+  });
 }
 
 function renderStepsTable() {
@@ -391,6 +419,8 @@ function renderStepsTable() {
         }
       });
     });
+    const progressBtn = tr.querySelector("[data-step-progress]");
+    if (progressBtn) { tr.classList.add("has-progress"); progressBtn.addEventListener("click", () => openStepProgress(step, i)); }
     const menuBtn = tr.querySelector(".row-menu-btn");
     menuBtn.addEventListener("click", () => toggleRowMenu(i, menuBtn, total));
     setupReorder(tr, i);
@@ -1154,6 +1184,7 @@ $("login-form").addEventListener("submit", async (e) => {
     Units.load(api);
     showLoggedIn(email);
     switchTab("programs");
+    if (window.ExerciseProgressUI) ExerciseProgressUI.warmUp.start();
   } catch (ex) {
     err.textContent = ex.message;
     err.hidden = false;
@@ -1203,5 +1234,6 @@ Units.onChange(() => {
     Units.load(api);
     showLoggedIn(email);
     switchTab("programs");
+    // (the background warm-up for an existing session starts from exercise-progress.js, which loads after this file)
   }
 })();

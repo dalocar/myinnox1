@@ -279,7 +279,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 
     <!-- HISTORY -->
     <div id="tab-history" class="tab-panel" hidden>
-      <!-- Sub-views of the History tab. Owners: dashboard (#act-dashboard, #act-medals), explorer (#act-explorer), report (#act-report). Only one is visible at a time. -->
+      <!-- Sub-views of the History tab. Owners: dashboard (#act-dashboard, #act-medals), explorer (#act-explorer), report (#act-report), exercise list (#ex-list), exercise progress (#ex-progress). Only one is visible at a time. -->
       <div id="act-dashboard">
         <div class="row-between">
           <h2>Workout History</h2>
@@ -290,6 +290,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
       <div id="act-medals" hidden></div>
       <div id="act-explorer" hidden></div>
       <div id="act-report" hidden></div>
+      <div id="ex-list" hidden></div>
       <div id="ex-progress" hidden></div>
     </div>
 
@@ -485,5 +486,6 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="activity-explorer.js"></script>
 <script src="activity-dashboard.js"></script>
 <script src="exercise-progress.js"></script>
+<script src="exercise-list.js"></script>
 </body>
 </html>

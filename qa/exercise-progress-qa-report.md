@@ -183,3 +183,53 @@ AC1-AC10: PASS.
 
 ## Still not verified
 Real API (`size`, true cap, rate limit, 500-workout first-sync time); reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; 500-point chart performance; touch hover.
+
+---
+
+# Round 4 final re-verification (commits d021494, 53628b9: one wide list call)
+
+Automated: `node --test static/*.test.js` 233 pass / 0 fail (3 runs; fewer tests than round 3 because the windowing tests were removed with the code), external-hosts ok, theme contrast all pairs pass.
+
+## Verdict: READY, with 1 Minor risk accepted on the basis of the measured API (N4), 1 Minor (N5) and 1 Trivial (N6) the owner can fix or defer
+No Blocker or Major.
+
+## Verified in the browser (fixture :8821, stub :8822)
+| Scenario | Result |
+|---|---|
+| First sync | Exactly one list call `startTime=1990-01-01 00:00:00&endTime=2100-12-31 23:59:59&size=5000`, then 86 detail calls; progress "9 of 86" at 300 ms; `meta {complete:true}` |
+| Second open | Stats render within 80 ms from cache; exactly 1 list call, 0 detail calls |
+| Pause (503 on details) and Resume | Paused with generic translated message, Resume completes 86 |
+| Leave mid-sync and resume | 30 cached at leave, no requests after leaving, resume fetched exactly the missing 56 |
+| 429 with `Retry-After: 2` on the list call | Waited 2 s per retry (2 injected 429), message shown, synced afterwards |
+| Offline with cache | Banner and chart from cache |
+| Single list call failing (HTTP 500 every attempt, cache present) | 5 attempts, status "stale", "Could not refresh. Showing the data saved on this device.", cache (86) and chart intact, recovers on the next open. Empty cache: error banner + Retry (round 2/3 behaviour, unchanged) |
+| Logout wipe | All `myinnox1-progress-*` DBs and the registry key removed (21 DBs to 0) |
+| Fallback `#size=7&cap=7` | 47 list calls, 86/86, not saturated, no warning, `complete:true` |
+| Fallback `#size=2&cap=2` | Same-day pair is a full single day: `saturated`, warning "Some history may be missing", `complete:false`, 86 loaded; a fake cached workout is NOT purged |
+| Purge | Fake cached workouts dated 2026-03 (recent), 2024-01 and 2012-06 (old, far outside any window) are all purged on the next normal sync |
+| Empty listing (200 `[]`, and `data:null`) with a cache | Nothing purged, status done. With an empty cache and `#emptylist`: "No history for this exercise yet" |
+| Failed listing | Throws before the diff: nothing purged (above) |
+| Regression D1-D13, N1-N3 that still apply | D1 identical Latest/Personal best/Sessions/Change on 3M/1Y/All with "n in this range"; D2, D5, D8, D9, D10, N3 unchanged (tests + spot checks); the earlier windowing items (D3/D4/N1/SATURATION_FLOOR) no longer exist |
+
+The old `#cap=N` alone no longer triggers any fallback (the client asks for 5000 and a cap of 7 is not detected). By design and consistent with the measured API (no cap); acceptable, but see N4 for the consequence.
+
+## Defects
+### N4 (Minor, accepted given the measurement; a guard is advisable) An undetected server cap now silently purges the cache
+Repro: sync fully (86 cached), then make the server cap list answers at 7 without the client knowing (`/ep/_config?cap=7`, default size 5000) and reopen: the listing has 7 rows (not "full"), is treated as complete, `diffIds` marks the other 79 cached workouts as deleted and purges them; the chart shows 7 sessions with no warning. It self-heals as soon as the server answers fully again (next open refetches all 86), so nothing is permanently lost, but the user would see the history shrink and re-download. Before round 4 an unknown cap only truncated new data; now it also deletes old data. Given the live measurement (size honoured up to 5000+, no cap) this is a hypothetical upstream regression, so acceptable; a cheap guard would be to skip the purge when the listing is smaller than, say, half the cache (or smaller than the cache by more than N rows) and show the warning.
+
+### N5 (Minor) More than 3 requests in flight at the start of a first sync
+`/ep/_stats.maxInFlight` is 4 on a first sync: the fire-and-forget `fetchLibrary` (second call, `?custom=true`) overlaps the first three detail calls now that the listing takes a single quick call. Acceptance 6 and the plan say never above 3. Impact is one extra light request once per 24 h, so it cannot trigger the WAF, but it breaks the literal rule; await the library fetch before the pool or count it in the gate.
+
+### N6 (Trivial) Implementation notes still describe the removed windowing API
+`docs/exercise-progress-impl-notes.md` line 24 lists `isFull(count,size,maxSeen)` and `enumerateRecords -> {rows, coveredFrom, windows, calls, saturated, maxSeen}`; the code now has `isFull(count,size)` and `{rows, coveredFrom, calls, saturated}`. The Sync/Purge paragraphs, deviations, stub flags and the plan answers 3-4 are accurate and match the code. Plan answer 5 (first-sync cost) is unchanged and still correct. No dead i18n keys (all 48 keys are used; "View progress of {name}" is used by the report), no dead CSS classes, no leftover references to windows, `SATURATION_FLOOR`, `fullAt`, `KNOWN_CAPS`, `MIN_YEAR`.
+
+## One-big-call risk assessment
+- Size: a 542-row answer took about 1.4 s live (per the plan notes). Rows in the list carry no `extData`, roughly 0.5 KB each, so even 5000 rows is a few MB of JSON; parsing and the `Map` are trivial compared with the detail fetches.
+- Time: extrapolating linearly 5000 rows could approach the 20 s proxy timeout (`functions/api/[[path]].js`, `TIMEOUT_MS = 20000`), but 5000 workouts is more than 13 years of daily training; with a realistic 500-2000 rows the call is 1.5-6 s. If it did time out the proxy answers an error status, which `withRetry` treats as retryable (5 attempts, with waits), then the UI falls back to the cached data ("Could not refresh...") or, with an empty cache, to the error banner with Retry (verified with HTTP 500). A user with >5000 workouts would hit the exactly-`size` bisect fallback (day windows), which stays correct, only slower.
+- Failure: verified above; a failed or timed-out single call never purges and never blanks the chart.
+
+## Updated acceptance table
+AC1-AC10: PASS (AC6 with the N5 caveat; AC7 purge now immediate and verified for recent and old workouts).
+
+## Still not verified
+Real-API behaviour of the final client (a live 5000-row call and the real proxy timeout), the WAF 429 threshold; reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; 500-point chart performance; touch hover.

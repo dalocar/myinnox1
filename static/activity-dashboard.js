@@ -372,7 +372,7 @@
     pendingFocus = "#act-medal-btn";
     el("act-dashboard").hidden = true;
     el("act-medals").hidden = false;
-    ["act-explorer", "act-report", "ex-progress"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
+    ["act-explorer", "act-report", "ex-progress", "ex-list"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
     if (S.badges.status === "error") load("badges");
     el("act-medals").innerHTML = "";
     renderMedalsPage();
@@ -393,6 +393,12 @@
       const i = S.recs.data ? S.recs.data.indexOf(r) : -1;
       pendingFocus = i === 0 && fromLatest ? "[data-open-latest=\"1\"]" : i >= 0 ? `[data-rec="${i}"]` : "";
       ReportUI.open(r.sportRecordId, { row: r, onBack: () => DashboardUI.show() });
+    }
+  }
+  function openExerciseList() {
+    if (window.ExerciseListUI && ExerciseListUI.open) {
+      pendingFocus = "#act-exlist-btn";
+      ExerciseListUI.open({ onBack: () => DashboardUI.show() });
     }
   }
   async function removeRecord(r) {
@@ -416,6 +422,7 @@
     if (tgt.closest("[data-open='today']")) return openExplorer();
     if (tgt.closest("[data-open-latest]")) return openReport(S.recs.data && S.recs.data[0], true);
     if (tgt.closest("#act-medal-btn")) return showMedals();
+    if (tgt.closest("#act-exlist-btn")) return openExerciseList();
     if (tgt.closest("#history-refresh-btn")) return loadAll();
     if (tgt.closest("#act-medals-back")) { medalsOpen = false; return DashboardUI.show(); }
     const del = tgt.closest("[data-del]");
@@ -443,6 +450,8 @@
         <div class="act-card-top"><h3 id="act-h-medal"></h3>
           <button type="button" id="act-medal-btn" class="act-medal-btn"><span class="act-chev" aria-hidden="true"></span></button></div>
         <div id="act-medal-body" class="act-body"></div></section>
+      <div class="act-exentry"><section class="act-card" aria-labelledby="act-h-exlist"><h3 id="act-h-exlist"></h3>
+        <button type="button" id="act-exlist-btn" class="act-linkcard"><span class="act-sub" id="act-exlist-sub"></span><span class="act-chev" aria-hidden="true"></span></button></section></div>
       <section class="act-recent" aria-labelledby="act-h-recent"><h3 id="act-h-recent"></h3><div id="history-list"></div></section>`;
     root.addEventListener("click", onClick);
     wireImgFallback(root);
@@ -455,6 +464,11 @@
     const set = (id, k) => { const n = el(id); if (n) n.textContent = t(k); };
     set("act-h-latest", "Latest Record"); set("act-h-week", "This Week"); set("act-h-month", "This Month");
     set("act-h-total", "Total"); set("act-h-medal", "Medals"); set("act-h-recent", "Recent Activity");
+    set("act-h-exlist", "Exercises"); set("act-exlist-sub", "Search every exercise and open its progress");
+    const eb = el("act-exlist-btn");
+    if (eb) { eb.hidden = !window.ExerciseListUI; eb.setAttribute("aria-label", t("Exercises") + ". " + t("Search every exercise and open its progress")); }
+    const ec = document.querySelector(".act-exentry");
+    if (ec) ec.hidden = !window.ExerciseListUI;
     const b = el("act-medal-btn");
     if (b) b.setAttribute("aria-label", t("Open the medals page"));
   }
@@ -466,7 +480,8 @@
       const wasMedals = medalsOpen;
       medalsOpen = false;
       el("act-dashboard").hidden = false;
-      ["act-medals", "act-explorer", "act-report", "ex-progress"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
+      if (window.ExerciseListUI) ExerciseListUI.close(); // History re-shown (tab bar or Back): the list stops its sync
+      ["act-medals", "act-explorer", "act-report", "ex-progress", "ex-list"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
       renderAll();
       const f = pendingFocus; pendingFocus = "";
       if (f || wasMedals) {

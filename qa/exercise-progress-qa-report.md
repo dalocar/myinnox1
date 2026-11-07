@@ -148,3 +148,38 @@ The summary and aria text use "{n} sessions" with no singular form.
 
 ## Still not verified
 Real API (`size`, true cap, rate limit, 500-workout first-sync time); reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; ko, zh, it screens visually (keys verified); ember, tide, graphite screenshots; 500-point chart performance; de at 320 after the round 2 CSS change (not re-shot).
+
+---
+
+# Round 3 final sign-off (commit 7e7d6b2)
+
+Automated: `node --test static/*.test.js` 238 pass / 0 fail (3 runs); external-hosts ok (51 files); theme contrast all pairs pass.
+
+## Verdict: READY. No open Blocker, Major or Minor defect. Open items are Trivial or accepted risks (below).
+
+## Verification
+| Item | Result | Evidence |
+|---|---|---|
+| N1 tiny history | FIXED | Two same-day workouts as the whole history: `saturated` false, `complete` set, purge eligible (node; 21 list calls, a little wasteful but harmless). A genuine 25-row day with `size=25` is still flagged. Browser `cap=2` (the fixture's real same-day pair): 86/86, no warning, banner hidden, `complete=true`. |
+| N2 empty/failed listing never purges | FIXED | With `meta.fullAt` aged and a fake stale cached workout: (a) every list answer `200 []` -> cache untouched (87 kept, fake kept); (b) first window OK then HTTP 500 on later windows -> enumeration rejects, fake kept, "Could not refresh. Showing the data saved on this device."; (c) normal full walk -> fake purged, `fullAt` renewed. `diffIds([], cache, {coveredFrom})` returns no stale. |
+| N3 singular | FIXED | "1 session / 5 sessions" in en; es 1 sesión; de 1 Einheit; fr 1 séance; it 1 sessione; ja 1回; ko 1회; zh "1 次训练". Used in tile aria summary. |
+| D10 | FIXED | Error and paused banners use the translated generic text in all 7 languages (raw server text "raw server text" no longer shown). Tooltip and table dates stay ISO (documented, accepted). |
+| D11 | FIXED | German ranges "3 M / 6 M / 1 J. / Alle" on one line, 44 px high, no overflow at 320 px (scrollWidth 320); de at 768 also fine. |
+| D12 | Not done, accepted | At most 3 discarded detail responses per leave. |
+| D1-D9 regression | PASS | Push-up on 3M/6M/1Y/All: same Latest/Personal best (Feb 5, 2025)/Sessions 44/Change; "n in this range" 8/13/25; table rows follow range. Range button keeps focus after unit switch; table region focusable; D2/D3/D8 states unchanged from round 2. |
+| Visual pass ko, zh, it at 768 | PASS | No overflow, labels translated, chart and tiles correct. |
+| Themes ember, tide, graphite at 768 | PASS | Chart, tiles, tooltip colours follow tokens; readable (a first ember frame was captured mid theme cross-fade only). |
+
+## Judgement on the SATURATION_FLOOR (20) residual risk: ACCEPTABLE
+With a server cap below 20, caps are discovered across days by bisecting, so history is complete as long as no single day exceeds the cap. A day with more workouts than a sub-20 cap would be truncated silently (no warning) and, on a full walk, the cached workouts of that day that the truncated answer omitted would be purged and not refetched until the next listing returns them. That needs both an unusually low upstream cap and more workouts in one day than the cap; real users rarely do more than a handful of workouts a day and the real cap (50 or `size`) is far above 20. Not a defect; revisit once the real API cap is probed.
+
+## Remaining open items (none blocking)
+- Trivial: D12 (discarded late detail responses); tooltip/table dates are ISO.
+- Trivial: for tiny same-day histories the walk makes ~21 list calls (efficiency only).
+- Accepted: SATURATION_FLOOR residual risk above; stale workouts can linger up to 24 h (round 2).
+
+## Final acceptance table
+AC1-AC10: PASS.
+
+## Still not verified
+Real API (`size`, true cap, rate limit, 500-workout first-sync time); reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; 500-point chart performance; touch hover.

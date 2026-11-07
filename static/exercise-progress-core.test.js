@@ -348,8 +348,13 @@ test("every Exercise Progress string is translated in all seven languages", () =
   const keys = new Set([...ui.matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"')));
   ["3M", "6M", "1Y", "All", "Last 3 months", "Last 6 months", "Last year", "All time"].forEach((k) => keys.add(k));
   keys.add(JSON.parse('"' + /t\("(View progress of \{name\})"/.exec(rd("activity-report.js"))[1] + '"'));
+  // Phase 2/3: the Exercises list (direct t("...") calls plus the ones passed as variables) and the editor icon in app.js
+  for (const f of ["exercise-list.js", "activity-dashboard.js", "app.js"]) {
+    for (const m of rd(f).matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)) if (/Exercise|exercise|Progress for|Sort by|session|Best|Search every/.test(m[1])) keys.add(JSON.parse('"' + m[1] + '"'));
+  }
+  ["Most recent", "Most sessions", "Name A–Z", "Up {v} since first", "Down {v} since first", "{n} session", "{n} sessions", "{n} reps", "Progress for {name}"].forEach((k) => keys.add(k));
   assert.ok(keys.size > 30);
-  const es = ["i18n.js", "exercise-progress.js", "activity-report.js", "activity-explorer.js"].map(rd).join("\n");
+  const es = ["i18n.js", "exercise-progress.js", "exercise-list.js", "activity-report.js", "activity-explorer.js"].map(rd).join("\n");
   const missing = [];
   for (const k of keys) if (!es.includes(JSON.stringify(k) + ":")) missing.push("es: " + k);
   for (const l of ["de", "fr", "it", "ja", "ko", "zh"]) {
@@ -524,4 +529,108 @@ test("N10: corrupted pending-purge meta fails safe: new pending set with now, ne
   }
   // a well-formed pending set with a numeric-string timestamp still works
   assert.deepEqual(C.decidePurge(stale, 100, { ids: stale.map(String), seenAt: "0" }, now).purge, stale);
+});
+
+// ---- Phase 2: exercise list
+const sum = (id, start, sets) => C.summarizeWorkout(detail(id, start, sets));
+const LIST = [
+  sum(1, "2026-01-05 08:00:00", [set(100, 100, 10, { actionName: "Seated Chest Fly" }), set(200, 0, 20, { actionName: "Push-up" }), set(300, 50, 12, { actionName: "Élévation latérale" })]),
+  sum(2, "2026-02-05 08:00:00", [set(100, 120, 10, { actionName: "Seated Chest Fly" }), set(200, 0, 25, { actionName: "Push-up" })]),
+  sum(3, "2026-03-05 08:00:00", [set(100, 150, 8, { actionName: "Seated Chest Fly" }), set(300, 40, 12, { actionName: "Élévation latérale" })]),
+  sum(4, "2026-03-05 18:00:00", [set(400, 0, 15, { actionName: "Warm-up Only" })]),
+];
+const MODES = { 100: { sideNum: 2, countType: 1 }, 200: { sideNum: 0, countType: 1 }, 300: { sideNum: 1, countType: 1 } };
+test("fold: case, accents, spaces", () => {
+  assert.equal(C.fold("  ÉLÉVATION   Latérale "), "elevation laterale");
+  assert.equal(C.fold(null), "");
+  assert.equal(C.fold("Ñandú"), "nandu");
+});
+test("listExercises: rows, figures follow the detail screen", () => {
+  const r = C.listExercises(LIST, { modeFor: (id) => MODES[id] });
+  assert.equal(r.total, 4);
+  const by = Object.fromEntries(r.rows.map((x) => [x.actionId, x]));
+  assert.equal(by["100"].sessions, 3); assert.equal(by["100"].kind, "weight"); assert.equal(by["100"].modeKey, "combined");
+  assert.deepEqual(by["100"].best, { value: 150, date: "2026-03-05" }); assert.equal(by["100"].trend, "up"); assert.equal(by["100"].change.abs, 50);
+  assert.equal(by["200"].kind, "reps"); assert.deepEqual(by["200"].best, { value: 25, date: "2026-02-05" }); assert.equal(by["200"].lastDate, "2026-02-05");
+  assert.equal(by["300"].trend, "down"); assert.equal(by["300"].sessions, 2);
+  // never a chartable value (unknown mode, only a 0 kg set counted as reps -> reps kind)
+  assert.equal(by["400"].kind, "reps"); assert.equal(by["400"].sessions, 1); assert.equal(by["400"].trend, "single");
+});
+test("listExercises: weighted exercise with only 0 kg sets is listed without a best", () => {
+  const r = C.listExercises([sum(1, "2026-01-01 00:00:00", [set(1, 0, 10)])], { modeFor: () => ({ sideNum: 1 }) });
+  assert.equal(r.rows.length, 1); assert.equal(r.rows[0].best, null); assert.equal(r.rows[0].trend, "none"); assert.equal(r.rows[0].sessions, 1);
+});
+test("listExercises: sorts", () => {
+  const ids = (sort) => C.listExercises(LIST, { sort, modeFor: (id) => MODES[id] }).rows.map((x) => x.actionId);
+  assert.deepEqual(ids(), ["300", "100", "400", "200"]);            // recent: three on 03-05 (ties by name A-Z), then 02-05
+  assert.deepEqual(ids("sessions"), ["100", "300", "200", "400"]);   // 3, 2, 2, 1 (300 vs 200 tie: more recent first)
+  assert.deepEqual(C.listExercises(LIST, { sort: "name" }).rows.map((x) => x.name), ["Élévation latérale", "Push-up", "Seated Chest Fly", "Warm-up Only"]);
+  assert.deepEqual(ids("bogus"), ids("recent"));
+});
+test("listExercises: search is case and accent insensitive, uses the library name, falls back to the index name", () => {
+  const q = (query, names) => C.listExercises(LIST, { query, names }).rows.map((x) => x.actionId);
+  assert.deepEqual(q("ELEVATION"), ["300"]);
+  assert.deepEqual(q("  chest   fly "), ["100"]);
+  assert.deepEqual(q("zzz"), []);
+  assert.deepEqual(q("flexion", { 200: "Flexión de brazos" }), ["200"]);
+  assert.deepEqual(q("push", { 200: "Flexión de brazos" }), []);      // current-language name wins
+  assert.deepEqual(q("push", { 999: "x" }), ["200"]);                  // no library entry: index name
+  assert.deepEqual(q("fly", new Map([["100", ""]])), ["100"]);         // blank library name: index name
+  assert.equal(C.listExercises(LIST, { query: "zzz" }).total, 4);
+});
+test("listExercises tolerates garbage", () => {
+  assert.deepEqual(C.listExercises(null), { total: 0, rows: [] });
+  assert.deepEqual(C.listExercises([null, 3, {}], {}).rows, []);
+});
+
+// ---- Phase 3: warm-up gate
+test("warmupDecision: incremental only, 30 min, gating", () => {
+  const ok = { loggedIn: true, hasFullSync: true, lastRunAt: null, now: 10 ** 9, online: true, hidden: false, saveData: false, foreground: false, cooldownLeft: 0 };
+  assert.equal(C.warmupDecision(ok).run, true);
+  const why = (o) => C.warmupDecision(Object.assign({}, ok, o));
+  assert.equal(why({ hasFullSync: false }).reason, "no-full-sync");
+  assert.equal(why({ loggedIn: false }).reason, "logged-out");
+  assert.equal(why({ saveData: true }).reason, "save-data");
+  assert.equal(why({ foreground: true }).reason, "foreground");
+  assert.deepEqual([why({ online: false }).reason, why({ online: false }).wait], ["offline", "online"]);
+  assert.deepEqual([why({ hidden: true }).reason, why({ hidden: true }).wait], ["hidden", "visible"]);
+  const recent = why({ lastRunAt: 10 ** 9 - 29 * 60000 });
+  assert.equal(recent.reason, "recent"); assert.equal(recent.ms, 60000);
+  assert.equal(why({ lastRunAt: 10 ** 9 - 30 * 60000 }).run, true);
+  assert.equal(why({ lastRunAt: 10 ** 9 + 5000 }).run, true);          // clock went backwards: do not block forever
+  assert.equal(why({ lastRunAt: 10 ** 9 - 5000, everyMs: 1000 }).run, true);
+  assert.deepEqual([why({ cooldownLeft: 4000 }).reason, why({ cooldownLeft: 4000 }).ms], ["cooldown", 4000]);
+  assert.equal(C.warmupDecision(null).run, false);
+});
+
+// ---- QA round 1 (P2, P4)
+test("fold: sharp s, German umlauts, Spanish n with tilde", () => {
+  assert.equal(C.fold("Straße"), "strasse"); assert.equal(C.fold("STRAẞE"), "strasse");
+  assert.equal(C.fold("Fußheben"), C.fold("fussheben"));
+  assert.equal(C.fold("Übung Käse Öl"), "ubung kase ol");     // umlauts match the plain letter (documented)
+  assert.equal(C.fold("Piña Ñandú"), "pina nandu");            // n with tilde matches n (accent-insensitive, documented)
+});
+test("fold: NFKC unifies half-width kana and full-width Latin", () => {
+  assert.equal(C.fold("ﾍﾞﾝﾁ"), C.fold("ベンチ"));
+  assert.equal(C.fold("ＡＢＣ ｆｌｙ"), "abc fly");
+});
+test("fold: kana voiced and semi-voiced marks are kept", () => {
+  assert.notEqual(C.fold("ヘンチ"), C.fold("ベンチ"));
+  assert.notEqual(C.fold("ハ"), C.fold("パ"));
+  assert.notEqual(C.fold("は"), C.fold("ば"));
+  const one = [sum(1, "2026-01-01 08:00:00", [set(1, 50, 5, { actionName: "ベンチプレス" })])];
+  assert.equal(C.listExercises(one, { query: "ヘンチ" }).rows.length, 0);
+  assert.equal(C.listExercises(one, { query: "ﾍﾞﾝﾁ" }).rows.length, 1);
+});
+test("makeFlight: a request in flight is waited for, then forgotten", async () => {
+  const f = C.makeFlight();
+  let done; const p = new Promise((r) => { done = r; });
+  f.track(7, p);
+  assert.equal(f.has("7"), true); assert.equal(f.has(8), false);
+  let waited = false; f.wait(7).then(() => { waited = true; });
+  await new Promise((r) => setTimeout(r, 5)); assert.equal(waited, false);
+  done(); await new Promise((r) => setTimeout(r, 5));
+  assert.equal(waited, true); assert.equal(f.has(7), false);
+  const bad = Promise.reject(new Error("x")); f.track(9, bad).catch(() => {});
+  await f.wait(9); await new Promise((r) => setTimeout(r, 1)); assert.equal(f.has(9), false);
 });

@@ -63,3 +63,61 @@ PORT=8832 node qa/serve-with-stub.js
 open http://localhost:8832/#fxport=8831
 ```
 History -> "Upper A" -> tap an exercise. Exercises: 512 Chest Fly (Combined), 530/531 Row R/L and 570 Hammer Curl (Per side), 561 Push-up (reps), 560 Plank (seconds), 9001 custom (Combined), 777 in no library. Same-day pair on 2026-10-20. Stub flags (hash, `&`-separated): `imperial`, `now=`, `email=`, `size=7&cap=7` (bisect fallback; `size=2&cap=2` for a saturated day), `latency=`, `fail=429:5[:route[:retryAfter]]`, `retryscale=0.05`, `nolibrary`, `offline`, `fxport=`. Server: `/ep/_stats`, `/ep/_reset`, `/ep/_config?latency=&cap=`, `/ep/_fail?...`; env `EP_FAIL`, `EP_LATENCY_MS`, `EP_LIST_CAP`. Clear the cache with `await ExerciseProgressUI.clearAll()` before a first-sync scenario. Injected `route=detail` failures also hit the report's own detail call.
+
+---
+
+# Phase 2 and 3: Exercises list, program editor icon, background warm-up
+
+Plan: `docs/plan-exercise-progress-p2p3.md` (issue #9). Branch `feat/exercise-progress-p23`, stacked on Phase 1.
+
+## Files
+| File | Role |
+|---|---|
+| `static/exercise-progress-core.js` (+ tests) | `fold(text)`, `listExercises(index, {query, sort, lang, names, modeFor})` -> `{total, rows}`, `SORTS`, `warmupDecision(state)`, `WARM_*` constants. Pure. |
+| `static/exercise-list.js` | New. `ExerciseListUI = {open({onBack}), close(), restore()}`: DOM of the History sub-view `#ex-list`. No network of its own. |
+| `static/exercise-progress.js` | Reuse hooks: `attachList/detachList`, `view()`, `paintSync(n)`, overlay mode of `open()`, library meta v2 (adds the picture, keyed by language), sticky `firstFull` meta, background warm-up (`ExerciseProgressUI.warmUp`). |
+| `static/exercise-progress.css` | `.exl-*` list, `.exp-overlay`, `.step-progress-btn`. Theme tokens only. |
+| `static/activity-dashboard.js` | "Exercises" entry card (`#act-exlist-btn`), `show()` closes the list; sibling lists include `#ex-list`. Same in `activity-report.js`, `activity-explorer.js`. |
+| `static/app.js` | Progress icon in the weight cell of the program editor; warm-up start (login) and stop (logout). `static/style.css`: mobile placement of the icon. |
+| `static/index.html` | `#ex-list`, script tag. i18n: 21 keys in all 7 packs. |
+| `qa/*` | Fixtures (Spanish library names, a program for the editor), new stub flags, `/ep/_dump`, `/ep/course/custom/*` routes. |
+
+## Contract
+- `listExercises` rows: `{actionId, name, indexName, sessions, lastDate, kind, modeKey, best, latest, first, change, trend}`, `trend` in `up|down|same|single|none`. Figures come from `buildSeries` (all-time summary), so the list agrees with the detail screen (sessions with a chartable value, personal best, latest vs first). An exercise whose sets never have a chartable value (only 0 kg warm-ups of a weighted exercise) is still listed, with the raw workout count, no best and trend `none`.
+- Search: `fold()` (NFD, marks removed, lower case, spaces collapsed) on the name in the UI language (library, `names`) with the index name as fallback only (not both). Sorts: `recent` (default, ties by name), `sessions` (ties by recency), `name` (`localeCompare` with the UI language, base sensitivity, numeric).
+- Library meta is now `{v: 2, lang, at, items}`; items carry `name` (UI language) and `pic`. A cache from Phase 1 or another language is refetched at the next sync (through the pacer).
+
+## Behaviour and decisions
+- **List = second foreground owner of the same sync.** `attachList` loads the cache, paints, and calls the existing `startSync()` (pacer, cooldown, Web Lock, purge rules, resume) unless a sync finished less than a minute ago. The sync banner is the progress screen's own (`paintSync`), so progress, countdown, paused, error and "other tab" look and read identically. There is no second sync path.
+- Back navigation: tapping a row stores the scroll position and the row, opens Exercise Progress with `onBack: restore`; restore unhides the same DOM (search text and sort intact), re-renders from the cache, restores scroll, focuses the row and resumes the sync that leaving stopped. Opening the list from the dashboard starts fresh (empty search, sort recent). The History tab (tab bar) closes the list.
+- States: cached rows appear immediately; rows update (throttled to 700 ms) while syncing. No cache: loading, offline, "no exercise history yet", error and paused (banner with Retry / Resume, empty area). No match: message with a Clear search button. A polite live region announces the count only after a search or sort change.
+- **Program editor icon**: shown for `sideNum` 1 or 2, or unknown `sideNum` with a weight > 0, and a known action (`actionLibraryId`, else `actionId`). It sits next to the load input (top right of the card on narrow widths, 44 px on narrow or touch). It opens Exercise Progress as an **overlay** (`#ex-progress-overlay`, fixed, `role=dialog`, `#app` made `inert`): the editor DOM, its unsaved edits and scroll are never touched. Back/Escape closes the layer and focuses the icon. Language or unit changes still re-render the editor underneath from `currentCourse`, as before.
+- **Warm-up**: starts at login and at app load with a session (`exercise-progress.js` calls `warmStart()` when it loads, after `app.js` init), waits 5 s, then `requestIdleCallback` (timeout 10 s; 1 s timer fallback). `warmupDecision` gates: logged in, no `saveData`, no foreground owner, online (else waits for `online`), visible (else waits for `visibilitychange`), a full sync completed on this device (`meta.firstFull`, or the Phase 1 `meta.sync.complete`), at least 30 min since the later of `meta.warm` and the last sync, and no cooldown (retries once after it). It then stamps `meta.warm` and runs the normal `startSync()` with `S.bg = true`: the same pacer, cooldown and Web Lock (lock taken by another tab -> it just stops). A listing that would need more than 30 detail fetches stops without fetching (`too-many`): that stays a user-started sync. No UI; the cooldown stays quiet (`startTicker`/banners only exist for a foreground owner). Opening Exercise Progress or the list while it runs calls `startSync()`, which stops the background run and continues in the foreground (measured after QA round 1: 20 missing ids -> exactly 20 detail requests; before, up to 3 were repeated per hand-off). `warmUp.stop()` (logout, before the cache wipe) and `clearAll()` cancel it.
+- Deletions seen by a warm-up listing use the Phase 1 purge rules unchanged (including the 10-minute confirmation).
+
+## Deviations from the plan
+1. The program editor uses an overlay layer in `body` (the plan allowed it as the fallback); a separate `#ex-progress-overlay` element is used instead of moving `#ex-progress`.
+2. Pure logic stayed in `exercise-progress-core.js` (no `exercise-list-core.js`); tests in `exercise-progress-core.test.js`.
+3. Matching uses only the display name, not both names; library names are refetched when the UI language changes (list shows the new names after that sync).
+4. The warm-up has a safety cap (30 missing details) that the plan did not mention.
+5. Not done: no re-arming of the warm-up while a tab stays open for hours (only login or app load triggers it); `saveData` is read once per attempt (no `change` listener).
+
+## Stub flags and helpers added
+`#synced[=N]` (cache seeded with a completed full sync; N newest workouts left out, bare flag = 0, use `#behind=1` for one), `#behind=N`, `#syncage=minutes` (default 120), `#warmat=minutes` (last warm-up that long ago), `#warmdelay=ms`, `#warmevery=ms` (the 30 min gate), `#savedata`, `#hidden`, `#lang=es`, `#theme=dark`. Runtime: `__epHidden(bool)`, `__epSaveData(bool)`, `__epAdvance(ms)` (fake clock; the clock now also keeps running across reloads of a tab unless `#now=` is given), `__epSeeded` / `__EP_READY` (the warm-up waits for the seeding), `ExerciseProgressUI.warmUp.log()` (decisions: `ok`, `start`, `recent`, `hidden`, `offline`, `save-data`, `no-full-sync`, `foreground`, `cooldown`, `yielded`, `too-many`). Product QA hooks: `window.__EP_WARM_DELAY`, `window.__EP_WARM_EVERY`, `window.__EP_READY`. Fixture server: `/ep/_dump`, Spanish names for `languageId=es`, `/ep/course/custom/list|detail` ("Progress icon demo": 512 Combined, 530 Per side, 561 and 560 sideNum 0, 9001 custom Combined, 777 unknown mode with weight, 888 unknown mode without weight, 570 Per side; the icon shows on 512, 530, 9001, 777, 570).
+
+## Running it (QA)
+```
+PORT=8841 node qa/fixture-server.js
+PORT=8842 node qa/serve-with-stub.js
+open "http://localhost:8842/?t=1#fxport=8841&email=qa1@example.test"      # use a new ?t= and email per scenario; hash flags need a real reload
+```
+- List: History tab -> Exercises. Oracle: `node` over `qa/fixtures/exercise-progress/workouts.json` (86 workouts).
+- Editor: Programs tab -> Edit "Progress icon demo".
+- Warm-up: `#synced=2&warmdelay=300` (expect: list + 2 library calls + 2 details, log `ok,start`), reload without `#synced` (log `recent`), `#warmevery=1000` or `__epAdvance(31*60000)` before reloading (runs again), fresh email (`no-full-sync`), `&hidden` then `__epHidden(false)`, `&offline` then `__epOffline(false)`, `&savedata`, `&fail=429:1:list` (quiet cooldown). `GET /ep/_reset` between runs that used `fail`.
+
+## QA round 1 fixes (P1-P8)
+- **P1** Escape in the search box with text clears the search; an empty box leaves the list.
+- **P2** Detail responses are stored even when their run was superseded (`S.store === store` guard), and `Core.makeFlight()` (shared by all runs) makes a taking-over run wait for a request already in flight instead of resending it. Test: `makeFlight`.
+- **P3/P7** `online` event: a foreground owner in `offline`/`stale` status syncs again. The offline and stale banners have Retry. The list no longer repeats the offline sentence in the empty area (banner only).
+- **P4** `fold`: NFKC, lower case, sharp s -> ss, then only U+0300-U+036F removed, recomposed. Decision: accent-insensitive includes n with tilde = n and umlauts = plain letters; kana voiced marks (U+3099/309A) are kept, so he and be never match; half-width kana and full-width Latin match.
+- **P5** icon `right: 46px` (4 px gap at 320). **P6** row label includes the weight mode, `role=list`, `#ex-list` is a labelled region (end-of-sync announcement in the list not added). **P8** the search debounce is flushed on Tab and blur.

@@ -68,3 +68,61 @@
   .exp-chart { height: 320px; }
 }
 @media (forced-colors: active) { .exp-progress-fill { background: Highlight; } }
+
+/* ---- Phase 2: Exercises list (History tab sub-view) ---- */
+.exl-root { max-width: 720px; }
+.exl-tools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 200px); gap: 10px; align-items: end; }
+.exl-tools[hidden], .exl-count[hidden], .exl-list[hidden], .exl-msg[hidden] { display: none; }
+.exl-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.exl-field label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.exl-field input, .exl-field select { width: 100%; min-height: 44px; box-sizing: border-box; }
+.exl-count { margin: 0; font-size: 13px; color: var(--text-2); }
+.exl-msg { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 28px 8px; }
+.exl-msg-main { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.exl-msg-sub { color: var(--text-2); font-size: 14px; }
+.exl-clear { min-height: 44px; }
+.exl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.exl-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; box-sizing: border-box; text-align: left; padding: 10px 12px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); font-weight: 400;
+}
+.exl-row:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.exl-row:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.exl-pic { flex: none; width: 52px; height: 52px; border-radius: 12px; background: var(--surface-2); overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.exl-pic img { width: 100%; height: 100%; object-fit: cover; filter: var(--img-filter); }
+.exl-pic svg { width: 26px; height: 26px; }
+.exl-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.exl-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.exl-name { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+.exl-badge.wm-badge { display: inline-block; margin: 0; }
+.exl-meta { display: flex; flex-wrap: wrap; gap: 0 6px; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.exl-dot { color: var(--muted); }
+.exl-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.exl-trend svg { width: 14px; height: 14px; flex: none; }
+.exl-trend.is-up { color: var(--text); }
+.exl-chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+@media (max-width: 520px) {
+  .exl-tools { grid-template-columns: minmax(0, 1fr); }
+  .exl-meta { flex-direction: column; gap: 0; }
+  .exl-dot { display: none; }
+  .exl-pic { width: 44px; height: 44px; }
+  .exl-row { gap: 10px; padding: 10px; }
+}
+
+/* ---- Phase 2: History dashboard entry ---- */
+.act-exentry { margin-bottom: 18px; }
+.act-exentry .act-linkcard { min-height: 48px; }
+
+/* ---- Phase 3: Exercise Progress above the program editor (the editor underneath is untouched) ---- */
+.exp-overlay { position: fixed; inset: 0; z-index: 70; max-width: none; margin: 0; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; background: var(--bg); color: var(--text); padding: 16px max(16px, calc((100vw - 720px) / 2)) calc(24px + env(safe-area-inset-bottom)); }
+.exp-overlay[hidden] { display: none; }
+body.exp-overlay-open { overflow: hidden; }
+
+/* ---- Phase 3: program editor icon ---- */
+.step-progress-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 8px; color: var(--primary); }
+.step-progress-btn svg { width: 20px; height: 20px; }
+.step-progress-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wt-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
+@media (max-width: 640px), (pointer: coarse) {
+  .step-progress-btn { width: 44px; height: 44px; }
+}

@@ -1,0 +1,16 @@
+# Exercise Progress, Phases 2 and 3 (issue #9): QA test plan
+
+Spec: `docs/plan-exercise-progress-p2p3.md` (8 acceptance criteria). Run notes: Phase 2/3 section of `docs/exercise-progress-impl-notes.md`.
+Setup: `PORT=<a> node qa/fixture-server.js`, `PORT=<b> node qa/serve-with-stub.js`, open `http://localhost:<b>/?t=N#fxport=<a>&email=<fresh>&<flags>` (fresh `?t=` and e-mail per scenario, `GET /ep/_reset` after `fail`/`waf` runs). Browser pane (Chromium) at 320 / 768 / 1280.
+Oracle: an independent script over `qa/fixtures/exercise-progress/workouts.json` (86 workouts) and the action library, not using `ExerciseProgressCore`.
+
+| AC | Cases |
+|---|---|
+| 1 List and rows | History > Exercises opens the list; 8 rows compared with the oracle (name, mode badge, last date, sessions, best, change since first) in kg and lb; row tap opens Exercise Progress; Back restores search, sort, scroll, focus on the row; Escape and the tab bar leave the list; entry from the report still goes report > progress > report |
+| 2 Search and sort | case, accents, padding spaces, punctuation "(r)", Spanish names, current-language-only matching, library-less exercise (index name), no-match state and Clear search, debounce (one render for 4 keystrokes), live region text; recent / sessions / name sorts with ties; unit probes for fold (ß, kana, full/half width, ligatures) |
+| 3 States | cached open is instant; no cache: "Loading", rows appear and grow during sync (throttled); `#emptylist`; `#offline` with no cache; `status=envelope` error + Retry; WAF cooldown banner (`waf=25:10:10`) and its live-region throttling; second open request count |
+| 4 Editor icon | icon on weighted steps only (512, 530, 9001, 777, 570), none on sideNum 0 and unknown without weight; accessible name; 44 px at 320; overlay opens with dialog role and inert #app; Escape and Back return with unsaved edits, scroll and focus; save body afterwards is the full program with the edits; focus trap; overlay opened during a first sync (progress shown, closing stops requests, reopening resumes) |
+| 5 Warm-up | `no-full-sync` (new account and a half-finished first sync); 30-minute gate at 28.95 min (recent) and 30.1 min (run) with `__epAdvance`; hidden / offline / saveData gates and their wake-up; foreground hand-off with a duplicate-request count; Web Lock held elsewhere; WAF limiter with a user clicking around (peak vs limit); quiet 429 cooldown on unrelated screens; logout mid-run; per-account runs; default 5 s idle delay; 30-missing-details cap; corrupted and skewed meta; judgement on no re-arm |
+| 6 Regression | first sync under the WAF limiter (peak per 10 s), second open, report entry point, tab-bar History, logout wipe (`clearAll`), unit tests for purge rules, the Phase 1 test file |
+| 7 i18n, units, themes, widths, a11y | 21 new keys in 6 packs plus the Spanish block, placeholders; de, ja, zh, ko, fr, es at 320 without horizontal overflow; kg and lb; dark, tide, hallowfit; 320 / 768 / 1280; keyboard-only path, tab order, roles, labels, live-region volume |
+| 8 Automation | `node --test static/*.test.js` x3, `check-external-hosts.js`, `check-theme-contrast.js`, no colour literals in the new CSS; critical review of `listExercises`, `fold`, sorts, trend, `warmupDecision` and their tests |

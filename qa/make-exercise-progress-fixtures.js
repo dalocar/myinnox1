@@ -67,8 +67,40 @@ dates.forEach(([date, time], i) => {
     duration: 1200 + (i % 5) * 120, capacity: 0, coins: 10, steps: 0, extData: ex,
   });
 });
+// Spanish names (served when the app asks with languageId=es) so search can be checked against accents and the current language.
+const ES = { 512: "Aperturas de pecho sentado", 530: "Remo a un brazo (D)", 531: "Remo a un brazo (I)", 570: "Curl martillo", 560: "Plancha", 561: "Flexión de brazos", 9001: "Mi pullover en polea" };
+const localised = (arr) => arr.map((a) => Object.assign({}, a, { name: ES[a.id] || a.name }));
+
+// A program for the editor icon (QA): weighted steps (Combined, Per side), weightless steps (sideNum 0), a step whose mode is
+// unknown (no sideNum) with a weight, one without a weight, and one without an action id.
+const stepOf = (n, a, o) => Object.assign({
+  id: 70000 + n, courseId: 71, sort: n, actionLibraryId: a.id, actionName: a.name, actionNo: a.actionNo || "", actionType: 3, picUrl: a.picUrl || "", videoUrl: "",
+  stage: 2, count: 12, consume: null, sideNum: a.sideNum, countType: a.countType, sideWeight: 80, muscleGroups: "1", muscleParts: "1", trainingPoint: "", reqParts: "3",
+  restTime: 45, groupNum: 3, mode: 0, modeParam: "{}", breathTip: "", custom: !!a.custom, duration: 12,
+}, o || {});
+const unknownA = (id, name) => ({ id, name, actionNo: "", picUrl: "", sideNum: undefined, countType: 1 });
+const COURSE = {
+  id: 71, courseNo: "LM-71", name: "Progress icon demo", level: 1, courseType: 1, smallImg: "https://power.renhesports.com/filestore/power/course/COVER_RACK_3_4.jpg",
+  detailsImg: "https://power.renhesports.com/filestore/power/course/COVER_RACK_1_4.jpg", deviceCategory: 7, sportType: 2, muscleParts: "1,2", tags: null, custom: null,
+  duration: 40, capacity: 0, heartRateMin: 0, heartRateMax: 0, actionNum: 8, collected: false, description: "", updateTime: "2026-10-30 12:00:00", deviceTypeList: ["35"], partsList: ["1"],
+  warmUpStepList: [],
+  mainStepList: [
+    stepOf(1, info(512), { sideWeight: 80 }),                 // Combined: icon
+    stepOf(2, info(530), { sideWeight: 100 }),                // Per side: icon
+    stepOf(3, info(561), { sideWeight: 0 }),                  // sideNum 0: no icon
+    stepOf(4, info(560), { sideWeight: 50, countType: 2 }),   // sideNum 0 with a stale weight: no icon
+    stepOf(5, info(9001), { sideWeight: 40 }),                // custom Combined: icon
+    stepOf(6, unknownA(777, "Retired Move"), { sideWeight: 30 }),   // unknown mode with a weight: icon
+    stepOf(7, unknownA(888, "Mystery Move"), { sideWeight: 0 }),    // unknown mode, no weight: no icon
+    stepOf(8, info(570), { sideWeight: 60 }),                 // Per side: icon
+  ].map((x) => { if (x.sideNum === undefined) delete x.sideNum; return x; }),
+  relaxStepList: [],
+};
 const w = (n, o) => fs.writeFileSync(path.join(OUT, n), JSON.stringify(o, null, 1) + "\n");
 w("workouts.json", workouts);
 w("action-list.json", { code: 200, msg: "OK", traceId: "fixture", success: true, data: LIB });
+w("action-list.es.json", { code: 200, msg: "OK", traceId: "fixture", success: true, data: localised(LIB) });
+w("action-list-custom.es.json", { code: 200, msg: "OK", traceId: "fixture", success: true, data: localised(CUSTOM) });
+w("course-detail.json", { code: 200, msg: "OK", traceId: "fixture", success: true, data: COURSE });
 w("action-list-custom.json", { code: 200, msg: "OK", traceId: "fixture", success: true, data: CUSTOM });
 console.log(`${workouts.length} workouts, ${workouts[0].startTime} .. ${workouts[workouts.length - 1].startTime}`);

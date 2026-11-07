@@ -144,9 +144,13 @@
     }
   }
   const offline = () => typeof navigator !== "undefined" && navigator.onLine === false;
+  // QA hook: window.__EP_RETRY_SCALE (e.g. 0.05) shrinks the backoff waits so failure paths can be tested quickly.
+  const scale = () => { const n = Number(window.__EP_RETRY_SCALE); return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 1; };
+  const nap = (ms) => new Promise((r) => setTimeout(r, ms * scale()));
   const retryOpts = (run) => ({
+    sleep: nap,
     shouldStop: () => run !== S.runId || offline(),
-    onRetry: (attempt, delay) => { gate.delay(delay); setSync({ msg: t("The server asked us to slow down. Waiting {s} s…", { s: Math.ceil(delay / 1000) }) }); },
+    onRetry: (attempt, delay) => { gate.delay(delay * scale()); setSync({ msg: t("The server asked us to slow down. Waiting {s} s…", { s: Math.ceil(delay / 1000) }) }); },
   });
   const gate = Core.makeGate();
 
@@ -271,11 +275,14 @@
   }
   const val = (s, v) => (s.kind === "weight" ? `${fmtW(v)} ${unitLabel()}` : fmtN(v) + (s.kind === "seconds" ? " s" : ""));
   const yOf = (s, p) => (s.kind === "weight" ? UnitsCore.fromTenths(p.value, unit()) : p.value);
+  function fmtPct(v) {
+    try { return new Intl.NumberFormat(LANG(), { maximumFractionDigits: 1 }).format(v); } catch (e) { return String(v); }
+  }
   function changeText(s) {
     const c = s.summary.change, sign = c.abs > 0 ? "+" : c.abs < 0 ? "−" : "";
     const mag = Math.abs(c.abs);
     const abs = s.kind === "weight" ? `${fmtW(mag)} ${unitLabel()}` : fmtN(mag) + (s.kind === "seconds" ? " s" : "");
-    const pct = c.pct == null ? "" : ` (${sign}${Math.abs(c.pct).toFixed(1).replace(/\.0$/, "")}%)`;
+    const pct = c.pct == null ? "" : ` (${sign}${fmtPct(Math.abs(c.pct))}%)`;
     return `${sign}${abs}${pct}`;
   }
   function summaryText(s) {
@@ -404,15 +411,17 @@
 
   function destroyChart() { if (S.chart) { try { S.chart.destroy(); } catch (e) { /* gone */ } S.chart = null; } }
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const dateTick = (dn) => {
-    try { return new Intl.DateTimeFormat(LANG(), { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(Math.round(dn) * 86400000)); } catch (e) { return Core.fromDayNumber(Math.round(dn)); }
+  // Month + year for long spans, day + month for spans under ~4 months (so ticks never repeat).
+  const dateTick = (dn, days) => {
+    const f = days < 120 ? { day: "numeric", month: "short" } : { month: "short", year: "numeric" };
+    try { return new Intl.DateTimeFormat(LANG(), Object.assign({ timeZone: "UTC" }, f)).format(new Date(Math.round(dn) * 86400000)); } catch (e) { return Core.fromDayNumber(Math.round(dn)); }
   };
 
   function drawChart(s) {
     destroyChart();
     if (!window.Chart || s.isEmpty) return false;
     const primary = cssVar("--primary"), surface = cssVar("--surface"), muted = cssVar("--muted"), grid = cssVar("--border"), warn = cssVar("--warn"), soft = cssVar("--primary-soft");
-    const pts = s.points, bestV = s.summary.best.value;
+    const pts = s.points, bestIdx = pts.findIndex((p) => p.value === s.summary.best.value && p.date === s.summary.best.date);
     Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
     const xs = pts.map((p) => p.x);
     let min = Math.min.apply(null, xs), max = Math.max.apply(null, xs);
@@ -425,7 +434,7 @@
         data: pts.map((p) => ({ x: p.x, y: yOf(s, p) })),
         borderColor: primary, backgroundColor: soft, borderWidth: 2, fill: false, tension: 0.15,
         pointRadius: many ? 2 : 4, pointHoverRadius: 7, pointBorderWidth: 2, pointBorderColor: primary,
-        pointBackgroundColor: pts.map((p) => (p.value === bestV ? warn : surface)),
+        pointBackgroundColor: pts.map((p, i) => (i === bestIdx ? warn : surface)),
       }] },
       options: {
         responsive: true, maintainAspectRatio: false, parsing: false,
@@ -434,6 +443,8 @@
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: cssVar("--toast-bg") || cssVar("--text"), titleColor: cssVar("--toast-fg") || cssVar("--surface"), bodyColor: cssVar("--toast-fg") || cssVar("--surface"),
+            displayColors: false, padding: 10, cornerRadius: 8,
             callbacks: {
               title: (items) => pts[items[0].dataIndex].startTime.slice(0, 16),
               label: (item) => {
@@ -448,7 +459,7 @@
           },
         },
         scales: {
-          x: { type: "linear", min, max, grid: { display: false }, border: { color: grid }, ticks: { color: muted, maxRotation: 0, maxTicksLimit: 6, font: { size: 11 }, callback: (v) => dateTick(v) } },
+          x: { type: "linear", min, max, grid: { display: false }, border: { color: grid }, ticks: { color: muted, maxRotation: 0, maxTicksLimit: 6, font: { size: 11 }, callback: (v) => dateTick(v, max - min) } },
           y: { beginAtZero: false, grace: "10%", grid: { color: grid }, border: { display: false }, ticks: { color: muted, font: { size: 11 }, maxTicksLimit: 6 },
             title: { display: true, color: muted, text: withUnit(metricLabel(s), s), font: { size: 11 } } },
         },
@@ -511,7 +522,7 @@
     }
 
     // chart card
-    nodes.ch.textContent = heading(s);
+    nodes.ch.textContent = s.hasAny ? heading(s) : t("Exercise progress");
     nodes.note.textContent = s.showTotal ? t("The chart shows the load per cable. The total for both cables is in the tooltip.") : "";
     nodes.note.hidden = !s.showTotal;
     const syncing = S.sync.status === "listing" || S.sync.status === "fetching";

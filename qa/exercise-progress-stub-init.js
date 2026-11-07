@@ -9,6 +9,7 @@
 //   #email=a@example.test  account used for the cache scope (default qa@example.test) - use two values to test isolation
 //   #size=6                client list page size (sets window.__EP_LIST_SIZE) so windows return "full" and bisect
 //   #cap=6                 fixture server returns at most 6 rows per list call (use with size=6; resets on /ep/_reset)
+//   #retryscale=0.05       multiply the client's backoff waits (1,2,4,8 s and Retry-After) by this, to test failures fast
 //   #latency=400           fixture server latency per data call in ms (default 150)
 //   #fail=429:5[:route[:retryAfter]]   inject failures (see qa/exercise-progress-routes.js); route = list|detail|action|any
 //                          e.g. #fail=429:5::2 -> five 429 answers with Retry-After: 2 ; #fail=500:all:detail -> every detail call 500
@@ -28,6 +29,7 @@
   FDate.prototype = RD.prototype; FDate.now = () => NOW + (RD.now() - T0); FDate.UTC = RD.UTC; FDate.parse = RD.parse;
   window.Date = FDate;
   if (P.get("size")) window.__EP_LIST_SIZE = +P.get("size");
+  if (P.get("retryscale")) window.__EP_RETRY_SCALE = +P.get("retryscale");
 
   let off = P.has("offline");
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => !off });

@@ -370,3 +370,28 @@ test("accountKey: stable, case-insensitive, differs per account, never contains 
   assert.ok(C.dbName("x").startsWith(C.DB_PREFIX));
   assert.equal(C.accountKey(""), "anon"); assert.equal(C.accountKey(null), "anon");
 });
+
+// ---- i18n completeness: every string the screen passes to t() exists in Spanish and all other packs
+test("every Exercise Progress string is translated in all seven languages", () => {
+  const fs = require("fs"), path = require("path");
+  const rd = (f) => fs.readFileSync(path.join(__dirname, f), "utf8");
+  const ui = rd("exercise-progress.js");
+  const keys = new Set([...ui.matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"')));
+  ["3M", "6M", "1Y", "All", "Last 3 months", "Last 6 months", "Last year", "All time"].forEach((k) => keys.add(k));
+  keys.add(JSON.parse('"' + /t\("(View progress of \{name\})"/.exec(rd("activity-report.js"))[1] + '"'));
+  assert.ok(keys.size > 30);
+  const es = ["i18n.js", "exercise-progress.js", "activity-report.js", "activity-explorer.js"].map(rd).join("\n");
+  const missing = [];
+  for (const k of keys) if (!es.includes(JSON.stringify(k) + ":")) missing.push("es: " + k);
+  for (const l of ["de", "fr", "it", "ja", "ko", "zh"]) {
+    const src = rd(`i18n-${l}.js`);
+    for (const k of keys) if (!src.includes(JSON.stringify(k) + ":")) missing.push(l + ": " + k);
+  }
+  assert.deepEqual(missing, []);
+});
+test("the stub, the screen and the CSS never use a non-/api network API", () => {
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "exercise-progress.js"), "utf8");
+  assert.ok(!/\bXMLHttpRequest\b|\bWebSocket\b|\bsendBeacon\b/.test(src));
+  for (const m of src.matchAll(/api\(\s*[`"']([^`"']+)/g)) assert.ok(m[1].startsWith("/"), m[1]);
+});

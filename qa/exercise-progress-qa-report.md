@@ -233,3 +233,60 @@ AC1-AC10: PASS (AC6 with the N5 caveat; AC7 purge now immediate and verified for
 
 ## Still not verified
 Real-API behaviour of the final client (a live 5000-row call and the real proxy timeout), the WAF 429 threshold; reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; 500-point chart performance; touch hover.
+
+---
+
+# Round 5 re-verification (commits 8d0d0d0, 0fc5d5f, 075e27d, a8cefed: WAF pacing, N4-N6)
+
+Automated: `node --test static/*.test.js` 241 pass / 0 fail (3 runs), external-hosts ok, theme contrast all pairs pass.
+
+## Verdict: READY. No Blocker or Major. One new Minor (N7) and some Trivial items, none blocking.
+
+## Pacer core review (ad-hoc node runs with an injected clock, sleep and random)
+- Rolling window: with 40 entries at t=0, `waitMs` is 10000 at 0, 1 at 9999, 0 at 10000 (entries exactly 10 s old drop out). Correct at the boundary.
+- 200 paced acquires interleaved with 1 unpaced UI record per 5: sync never above 4 per 1 s. Sync plus UI peaked at 41 per 10 s: UI calls are counted but never held back, so they can push the total 1 over the 40 budget. That is by design and far under 60.
+- Block: cooldown = max(Retry-After, 10 s) + jitter. Measured 11.0 s with random=0, 13.0 s with random~1, and 32 s with `Retry-After` 30 s, so jitter stays within 1-3 s. After the block: half rate, at most 2/s and 20 per 10 s. The first acquire after the block comes exactly when the cooldown ends.
+- A 429 from a request that started before the current block is treated as a `repeat` and does not count as a second block. A real second block returns `second: true` and halts the pacer.
+- Memory: the shared log trims entries older than 60 s on every record. At 1000 records per second the log holds 60,000 entries. At realistic rates it is under 100.
+- HTML 429: `api()` already wraps `res.json()` in try/catch. A forced block makes an HTML 429 reject with `HTTP 429`, `status 429`, `body null`, on both a forwarded and a stub-answered route. Every other screen goes through `api()`, which is the only `fetch("/api…")` in `static/`, so no screen can crash on JSON parsing.
+
+## Browser with the fixture limiter on (`#waf=60:10:10`, HTML 429, no Retry-After)
+| Scenario | Result |
+|---|---|
+| Full first sync (86 workouts, latency 60 ms) | 14 s, no block, limiter peak 42 per 10 s (sync 40 + 2 other calls), progress 4/s, max in flight 3 |
+| Page load + History + report + switching Fitness/Plans/Programs/History while a sync starts | Peak 46 per 10 s, no block. Leaving the History screen stops the sync by design, so other screens cannot run alongside it in the same tab. |
+| Forced block mid-sync (`/ep/_waf?block=10`) | Countdown "Waiting 12 s (rate limit)" ticking 12, 11 … 1. The request log shows NO request between the 429 and the end of the cooldown (next request exactly 12.0 s later). Then half rate (2 per second), sync completes. |
+| Second block in the same sync | Paused within 1 s, countdown also shown in the paused banner, no request sent while paused. Resume during the cooldown waits it out ("listing, Waiting 6 s…"), then completes. |
+| Two tabs, same account | Second tab shows "Syncing in another tab" with its cached chart; when the first finishes it re-reads the cache and runs one list call, 0 details. Limiter peak 46 per 10 s with no block. The second tab had no `#waf` flag, so its stub-answered page-load calls were not counted; the true peak is a few higher, still under 60. |
+| Syncing tab closed mid-sync (9 of 86 cached) | The waiting tab took the lock within 1 s and completed the sync (86), at the pacer rate. |
+| `navigator.locks` undefined | Syncs normally (86). |
+| N4: server cap 7 against 86 cached | No purge (86 kept), `meta.purgeSkipped {stale:79, cached:86, listed:7}`. Real deletions: 3 stale (recent, 2013, 2025) purged. 18 stale of 104 purged (under the 20 % limit). |
+| N5 | `maxInFlight` 3 on every first sync (library awaited through the pacer) |
+| Regression | First sync, second open (1 list, 0 details), pause/Resume, offline banner, clearAll wipes all DBs, D1 summary identical on 3M/All with "8 in this range". No console errors other than injected 429s. |
+| i18n | "Waiting {s} s (rate limit)" and "Syncing in another tab" translated in es, de, fr, it, ja, ko, zh |
+| Countdown at 320 px (de) | "Warte 11 s (Anfragelimit)" fits on one line with the progress bar, no overflow (scrollWidth 320) |
+| N6 docs | Impl notes and plan answer 4 match the code (PACE values, cooldown formula, half rate, second-block pause, Web Locks, purge guard, fixture limiter flags). |
+
+## Judgements
+- **Two-tab peak 46 per 10 s (over the 40 budget, under 60): acceptable.** The 40 budget is per tab by design (the log is in memory), and Web Locks lets only one tab sync, so the excess is the other tab's own UI calls, which are rare bursts. Another device behind the same IP can still push the total over 60. That case is handled: the 429 cooldown, then half rate, then a pause on the second block. A tab-wide budget cannot see other devices anyway.
+- **Resume restarts at full rate** (new pacer per sync) while honouring any remaining cooldown. Acceptable: at worst it is blocked again and pauses again after two blocks.
+
+## New defects
+### N7 (Minor) A genuine bulk deletion elsewhere is never purged
+The N4 guard skips any purge above max(5, 20 %) of the cache, and every later sync sees the same ratio. If a user deletes, say, 30 of 100 workouts in the official app, those 30 stay in the charts until logout, with no UI hint (only `meta.purgeSkipped`). Suggest: allow the purge when two consecutive full listings (minutes apart, or on the next day) agree on the same stale set, or when the listing is not suspiciously round (not 50/100/size).
+
+### N8 (Trivial) Rate-limit UX details
+- A pause caused by the second block says "The server is busy or unreachable", not "rate limit".
+- A 429 received by another screen (e.g. dashboard Refresh) does not start the tab cooldown. The sync learns of the block only from its own next 429, which costs one blocked request.
+- The "Syncing in another tab" view does not update progressively.
+- The countdown text is not in a live region.
+
+## Updated acceptance table
+AC1-AC10: PASS. AC6 is now met strictly: max in flight 3 and no request during a block.
+
+## Still not verified
+- The real Cloudflare behaviour: the exact counting (sliding or fixed window), whether requests during a block extend it, the body and headers of a real block, and clock skew between the client log and Cloudflare.
+- Two devices behind one IP.
+- Background tabs where browsers throttle timers (the pacer may run slower there, never faster).
+- A real 5000-row listing.
+- Reload while offline, the IndexedDB fallback, browsers other than Chromium, screen readers.

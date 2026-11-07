@@ -86,3 +86,65 @@ Regression: Training Report (sets table, header), History dashboard (recent list
 - Visual check of ja, ko, zh, fr, it (keys verified by script only), ember/tide/graphite screenshots (contrast values only), 500-point chart performance.
 - Retry cost of a permanently failing single record (envelope `code != 200` is retryable: 15 s of backoff on the shared gate for every sync, then counted as failed): by code reading only, not reproducible with the fixtures without editing them.
 - Explorer-originated report path (fixture statistics carry no records).
+
+---
+
+# Round 2 re-verification (commits 0f78a86, d720b83)
+
+Automated: `node --test static/*.test.js` 236 pass / 0 fail (3 runs), external-hosts ok, theme contrast all pairs pass. Browser: fixture :8821, stub :8822, re-run of the round 1 scenarios plus the new code paths.
+
+## Verdict: NOT READY, only because of Minor items the coordinator may choose to accept (N1, N2); no Major or Blocker open
+All round 1 defects marked fixed were verified fixed except D12 and D11, which the implementer declared not done (both Trivial).
+
+## Status per round 1 defect
+| # | Status | Evidence |
+|---|---|---|
+| D1 Major | FIXED | Push-up on 3M/6M/1Y/All: Latest, Personal best (Feb 5, 2025), Sessions 44, Change since first (+4, +33.3%, from Jan 8, 2025) identical; the screen-reader summary and live region identical too; chart points and table rows still follow the range (8/13/25/44); Sessions tile adds "8 in this range" etc. |
+| D2 Minor | FIXED | Error with empty cache: banner + Retry, no "Loading…"; Retry moves focus to title and recovers. Offline with empty cache: "You are offline, and no history is saved on this device yet." in both banner and card. Paused with 0 loaded: banner only, no "no history" claim; Resume works. |
+| D3 Minor | FIXED, with a side effect (N1) | `cap=7`, default size: 86/86 workouts, 36 list calls, `complete=true`. `cap=2`: 86/86 (184 list calls), `saturated`, never complete, warning "Some history may be missing..." shown; correct, because the fixture really has a two-workout day. |
+| D4 Minor | FIXED, trade-off acceptable | Within 24 h of the last full walk: a stale workout dated in the newest window is purged, an older stale one (2025-03-02) stays. After `fullAt` is aged 25 h: the older one is purged and `fullAt` renewed. A workout deleted elsewhere can linger up to 24 h in older years; acceptable for a chart (no data is lost, the next daily walk fixes it). |
+| D5 Minor | FIXED | Resume/Retry: focus to title. Unit switch with a range button focused: focus stays on that button and the Data table stays open. Language switch with summary focused: focus stays on summary, table open. |
+| D6 Minor | FIXED | Link is primary colour, underlined, chevron 18 px; 44 px high at 320 px (and on coarse pointers), 32 px on desktop mouse widths (above the WCAG 2.2 minimum). |
+| D7 Minor | FIXED | `docs/exercise-progress-impl-notes.md` committed; flags, contract and decisions match what was observed (all-time summary, saturated state, daily full walk, retry, focus). It still says "45 keys per pack"; cosmetic. |
+| D8 Trivial | FIXED | One session: change tile shows "—", aria summary "change since first —". |
+| D9 Trivial | FIXED | `.exp-tablewrap` has `tabindex=0`, `role=region`, accessible name (translated), focus ring. |
+| D10 Trivial | PARTLY | Paused banner now uses a translated generic message; the error banner still prints the raw server text ("injected failure"); tile dates now use `Intl` (fr "20 oct. 2026", ja "2026/10/20"); tooltip and table keep ISO (documented). |
+| D11 Trivial | NOT DONE (declared) | German "3 Mon." wrap at 320 not re-checked; unchanged by the diff. |
+| D12 Trivial | NOT DONE (declared) | Documented as harmless. |
+| D13 Trivial | WON'T FIX (declared intentional) | Accepted. |
+
+## Regression hunt, new code paths
+- Daily full-walk purge: purge only runs after a listing that threw nothing (a failed window rejects the whole enumeration, so nothing is purged) and not when `saturated`. Verified purge scope = `coveredFrom`. Hazard found, see N2.
+- "Saturated" state: renders, blocks `complete`, blocks purge, details are still fetched. False positive found, see N1.
+- New "n in this range" tile line: correct per range, hidden on All.
+- i18n: the 5 new keys exist and differ from English in all 7 packs (script); translated, no raw keys visible in fr and ja screens.
+- Layout: 768 px checked for the first time in ja (and fr): 4 stat tiles in a row, no horizontal overflow (scrollWidth = 768), table and chart fine. fr at 768 correct. 320 px: link 44 px, no overflow.
+- Console: no JS errors (only injected network failures).
+- Observed once and not a defect: the chart animates for about 300 ms after a language/unit re-render, so an immediate screenshot shows a half-grown line.
+
+## New defects
+### N1 (Minor) False "Some history may be missing" for tiny histories
+`isFull(count, size, maxSeen)` treats any window with at least 2 rows and as many rows as the fullest answer so far as cut. For an account whose busiest window holds exactly 2 workouts that are on the same day (e.g. a new user who trained twice on one day), the walk bisects down to that single day, finds it "full" and flags `saturated`: a wrong warning is shown, the sync is never marked complete (full re-walk every open, 20 list calls) and purge is disabled. Reproduced in node with a two-record same-day listing (saturated true, 21 calls); a third record on another day in the same year makes it disappear (maxSeen 3). Cheap fix: do not flag saturation for a one-day window unless its count equals `size` or the generic cap seen on windows spanning several days.
+
+### N2 (Minor) An empty (HTTP 200, `[]`) listing purges the whole cache
+`diffIds([], cache, {coveredFrom})` returns every cached id as stale, and the daily full walk now covers all years, so a single glitchy answer where every window returns `[]` (the plan notes the real API returns `[]` for a bad date or a dismissed account) deletes the cache; it self-heals on the next open (everything is listed and refetched) but the chart is empty meanwhile. Suggested guard: never purge when the whole listing is empty while the cache is not, or when more than half of the cache would be purged.
+
+### N3 (Trivial) "1 sessions"
+The summary and aria text use "{n} sessions" with no singular form.
+
+## Updated acceptance table
+| AC | Round 2 |
+|---|---|
+| 1 | PASS |
+| 2 | PASS (D1 fixed) |
+| 3 | PASS |
+| 4 | PASS (D2, D8, D9 fixed) |
+| 5 | PASS |
+| 6 | PASS (D3 fixed; N1 caveat) |
+| 7 | PASS (D4 fixed, 24 h lingering accepted; N2 caveat) |
+| 8 | PASS (fr, ja, es, de visually or by DOM; 768 checked; D11 left) |
+| 9 | PASS (236 tests) |
+| 10 | PASS |
+
+## Still not verified
+Real API (`size`, true cap, rate limit, 500-workout first-sync time); reload while offline; IndexedDB-unavailable fallback; browsers other than Chromium; real screen readers; ko, zh, it screens visually (keys verified); ember, tide, graphite screenshots; 500-point chart performance; de at 320 after the round 2 CSS change (not re-shot).

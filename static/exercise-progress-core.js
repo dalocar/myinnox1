@@ -148,11 +148,31 @@
 
   // ---------- Phase 2: the exercise list ----------
   // fold(text): case- and accent-insensitive key for search (NFD, combining marks removed, lower case, spaces collapsed).
+  // NFKC first (half-width kana, full-width Latin), lower case, sharp s -> ss, then only LATIN combining marks (U+0300-U+036F)
+  // are dropped: accents match their base letter (e with acute = e, n with tilde = n, umlauts = plain), while the kana voiced
+  // and semi-voiced marks (U+3099, U+309A) stay, so he and be (or ha and pa) never match each other.
   const fold = (s) => {
     let x = String(s == null ? "" : s);
-    try { x = x.normalize("NFD").replace(/\p{M}/gu, ""); } catch (e) { /* old engine: keep as is */ }
-    return x.toLowerCase().replace(/\s+/g, " ").trim();
+    try { x = x.normalize("NFKC"); } catch (e) { /* old engine */ }
+    x = x.toLowerCase().replace(/\u00df/g, "ss");
+    try { x = x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC"); } catch (e) { /* old engine */ }
+    return x.replace(/\s+/g, " ").trim();
   };
+  // makeFlight(): detail requests in flight, shared by every sync run, so a run that takes over from a stopped one (warm-up ->
+  // foreground) waits for a request that is already out instead of sending it again. track(id, promise) returns the promise.
+  function makeFlight() {
+    const m = new Map();
+    return {
+      has: (id) => m.has(String(id)),
+      wait: (id) => m.get(String(id)) || Promise.resolve(),
+      track(id, p) {
+        const k = String(id), q = Promise.resolve(p).then(() => {}, () => {});
+        m.set(k, q);
+        q.then(() => { if (m.get(k) === q) m.delete(k); });
+        return p;
+      },
+    };
+  }
   const SORTS = ["recent", "sessions", "name"];
   const DEFAULT_SORT = "recent";
   const pick = (src, id) => {
@@ -608,7 +628,7 @@
   return {
     SCHEMA, RANGES, DEFAULT_RANGE, LIST_SIZE, LIST_FROM, LIST_TO, CONCURRENCY, MAX_RETRIES, MAX_CONSECUTIVE_FAILURES, DB_PREFIX,
     parseDate, localISO, dayNumber, fromDayNumber, addDays, addMonths, parseStart, stamp,
-    summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions, fold, listExercises, SORTS, DEFAULT_SORT,
+    summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions, fold, makeFlight, listExercises, SORTS, DEFAULT_SORT,
     warmupDecision, WARM_EVERY_MS, WARM_DELAY_MS, WARM_MAX_FETCH,
     makeWindow, allWindow, bisectWindow, isFull, enumerateRecords, diffIds,
     parseRetryAfter, retryDelay, isRetryable, isTransport, withRetry, makeGate, runPool,

@@ -602,3 +602,35 @@ test("warmupDecision: incremental only, 30 min, gating", () => {
   assert.deepEqual([why({ cooldownLeft: 4000 }).reason, why({ cooldownLeft: 4000 }).ms], ["cooldown", 4000]);
   assert.equal(C.warmupDecision(null).run, false);
 });
+
+// ---- QA round 1 (P2, P4)
+test("fold: sharp s, German umlauts, Spanish n with tilde", () => {
+  assert.equal(C.fold("Straße"), "strasse"); assert.equal(C.fold("STRAẞE"), "strasse");
+  assert.equal(C.fold("Fußheben"), C.fold("fussheben"));
+  assert.equal(C.fold("Übung Käse Öl"), "ubung kase ol");     // umlauts match the plain letter (documented)
+  assert.equal(C.fold("Piña Ñandú"), "pina nandu");            // n with tilde matches n (accent-insensitive, documented)
+});
+test("fold: NFKC unifies half-width kana and full-width Latin", () => {
+  assert.equal(C.fold("ﾍﾞﾝﾁ"), C.fold("ベンチ"));
+  assert.equal(C.fold("ＡＢＣ ｆｌｙ"), "abc fly");
+});
+test("fold: kana voiced and semi-voiced marks are kept", () => {
+  assert.notEqual(C.fold("ヘンチ"), C.fold("ベンチ"));
+  assert.notEqual(C.fold("ハ"), C.fold("パ"));
+  assert.notEqual(C.fold("は"), C.fold("ば"));
+  const one = [sum(1, "2026-01-01 08:00:00", [set(1, 50, 5, { actionName: "ベンチプレス" })])];
+  assert.equal(C.listExercises(one, { query: "ヘンチ" }).rows.length, 0);
+  assert.equal(C.listExercises(one, { query: "ﾍﾞﾝﾁ" }).rows.length, 1);
+});
+test("makeFlight: a request in flight is waited for, then forgotten", async () => {
+  const f = C.makeFlight();
+  let done; const p = new Promise((r) => { done = r; });
+  f.track(7, p);
+  assert.equal(f.has("7"), true); assert.equal(f.has(8), false);
+  let waited = false; f.wait(7).then(() => { waited = true; });
+  await new Promise((r) => setTimeout(r, 5)); assert.equal(waited, false);
+  done(); await new Promise((r) => setTimeout(r, 5));
+  assert.equal(waited, true); assert.equal(f.has(7), false);
+  const bad = Promise.reject(new Error("x")); f.track(9, bad).catch(() => {});
+  await f.wait(9); await new Promise((r) => setTimeout(r, 1)); assert.equal(f.has(9), false);
+});

@@ -168,6 +168,7 @@
     onRetry: (attempt, delay, err) => { if (err && err.rateLimited) return; gate.delay(delay * scale()); setSync({ msg: t("The server asked us to slow down. Waiting {s} s…", { s: Math.ceil(delay / 1000) }) }); },
   });
   const gate = Core.makeGate();
+  const flight = Core.makeFlight(); // detail requests in flight, across sync runs (warm-up -> foreground hand-off)
 
   // Every sync request goes through the pacer (WAF budget, see exercise-progress-core.js). Any HTTP 429 is a block:
   // tab-wide cooldown, then half rate; a second block in the same sync pauses it.
@@ -316,9 +317,23 @@
     const res = await Core.runPool(diff.toFetch, async (row) => {
       await gate.wait();
       if (stopped()) return;
-      let r;
+      // A request the previous (stopped) run already sent: wait for it, it lands in the cache; never send it twice.
+      if (flight.has(row.recordId)) {
+        await flight.wait(row.recordId);
+        if (stopped()) return;
+        if (S.workouts.has(row.recordId)) { S.sync.done++; scheduleRender(false); renderSyncSoon(); return; }
+      }
+      // A response that arrives after this run was superseded is still stored (never thrown away, never refetched).
+      const job = (async () => {
+        const r = await pacedCall("/sport/record/detail?recordId=" + encodeURIComponent(row.recordId), run, pacer);
+        const sum = Core.summarizeWorkout(r.data);
+        if (!sum) { const e = new Error("Unreadable workout"); e.fatal = true; throw e; }
+        if (S.store === store) { await store.put(sum); S.workouts.set(sum.recordId, sum); }
+        return sum;
+      })();
+      flight.track(row.recordId, job);
       try {
-        r = await pacedCall("/sport/record/detail?recordId=" + encodeURIComponent(row.recordId), run, pacer);
+        await job;
       } catch (e) {
         if (stopped() || (e && e.stopped)) return;
         lastErr = e && e.message ? String(e.message) : "";
@@ -327,10 +342,6 @@
         throw e;
       }
       if (stopped()) return;
-      const sum = Core.summarizeWorkout(r.data);
-      if (!sum) { const e = new Error("Unreadable workout"); e.fatal = true; throw e; }
-      await store.put(sum);
-      S.workouts.set(sum.recordId, sum);
       S.sync.done++; S.sync.msg = "";
       scheduleRender(false);
       renderSyncSoon();
@@ -554,6 +565,9 @@
       box.appendChild(el("p", "exp-sync-text", sy.status === "offline"
         ? (saved ? t("You are offline. Showing the data saved on this device.") : t("You are offline, and no history is saved on this device yet."))
         : (saved ? t("Could not refresh. Showing the data saved on this device.") : t("Could not load your workout history"))));
+      const rb = el("button", "secondary", t("Retry")); rb.type = "button";
+      rb.addEventListener("click", () => { startSync(); });
+      box.appendChild(rb);
     } else if (sy.status === "done" && (sy.failed > 0 || sy.saturated)) {
       box.hidden = false;
       if (sy.failed > 0) box.appendChild(el("p", "exp-sync-text", t("{n} workouts could not be loaded and will be retried next time.", { n: sy.failed })));
@@ -968,6 +982,10 @@
   if (window.Units) Units.onChange(rerender);
   document.addEventListener("themechange", () => { if (S.open && nodes) renderData(); });
 
+  // The connection is back: a foreground owner that was waiting offline (or showing "could not refresh") syncs again.
+  window.addEventListener("online", () => {
+    if (active() && (S.sync.status === "offline" || S.sync.status === "stale")) startSync();
+  });
   if (loggedIn()) warmStart(); // app load with a valid session; login() calls ExerciseProgressUI.warmUp.start()
 
   window.ExerciseProgressUI = {

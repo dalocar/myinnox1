@@ -115,7 +115,7 @@
     }
     b.append(imgBox(v.picFor(r.actionId)), body);
     b.insertAdjacentHTML("beforeend", CHEV.replace("<svg", '<svg class="exl-chev"'));
-    b.setAttribute("aria-label", [t("View progress of {name}", { name: r.name }), last, sessions, best, tt].filter(Boolean).join(", "));
+    b.setAttribute("aria-label", [t("View progress of {name}", { name: r.name }), wm && wm.label ? t(wm.label) : "", last, sessions, best, tt].filter(Boolean).join(", "));
     li.appendChild(b);
     return li;
   }
@@ -134,7 +134,7 @@
     nodes.msg.textContent = "";
     let msg = "", sub = "";
     if (!m.total) {
-      if (st === "offline") msg = t("You are offline, and no history is saved on this device yet.");
+      if (st === "offline") msg = ""; // the banner (with Retry) already says it
       else if (st === "done" || st === "stale") { msg = t("No exercise history yet"); sub = t("Complete a workout and its exercises will show up here."); }
       else if (st === "error" || st === "paused") msg = ""; // the banner says what happened
       else msg = t("Loading…");
@@ -178,6 +178,7 @@
     const root = $("ex-list");
     root.textContent = "";
     root.className = "exp-root exl-root";
+    root.setAttribute("role", "region");
     root.setAttribute("aria-labelledby", "exl-title");
     const bar = el("div", "exp-bar");
     const back = el("button", "exp-back secondary");
@@ -198,10 +199,14 @@
     const ql = el("label", null, t("Search exercises")); ql.htmlFor = "exl-q";
     const q = el("input"); q.type = "search"; q.id = "exl-q"; q.value = L.query; q.autocomplete = "off"; q.spellcheck = false;
     q.setAttribute("enterkeyhint", "search");
+    const flush = () => { if (!L.searchTimer) return; clearTimeout(L.searchTimer); L.searchTimer = 0; L.query = q.value; renderRows(); announce(); };
     q.addEventListener("input", () => {
       clearTimeout(L.searchTimer);
-      L.searchTimer = setTimeout(() => { L.query = q.value; renderRows(); announce(); }, 200);
+      L.searchTimer = setTimeout(() => { L.searchTimer = 0; L.query = q.value; renderRows(); announce(); }, 200);
     });
+    // Tab right after typing: apply the pending filter BEFORE focus moves, or the row that gets focus may be filtered away.
+    q.addEventListener("keydown", (e) => { if (e.key === "Tab") flush(); });
+    q.addEventListener("blur", flush);
     q.addEventListener("search", () => { clearTimeout(L.searchTimer); L.query = q.value; renderRows(); announce(); }); // the clear (x) button
     qf.append(ql, q);
     const sf = el("div", "exl-field exl-sort");
@@ -215,7 +220,7 @@
 
     const count = el("p", "exl-count");
     const msg = el("div", "exl-msg"); msg.hidden = true;
-    const list = el("ul", "exl-list"); list.setAttribute("aria-label", t("Exercise list"));
+    const list = el("ul", "exl-list"); list.setAttribute("role", "list"); list.setAttribute("aria-label", t("Exercise list"));
     list.addEventListener("click", (e) => {
       const b = e.target instanceof Element ? e.target.closest(".exl-row") : null;
       if (b) openRow(b);
@@ -255,6 +260,13 @@
   function onKey(e) {
     if (e.key !== "Escape" || e.defaultPrevented || !L.open || !L.shown || EP.isOpen()) return;
     if (document.querySelector("dialog[open], .modal:not([hidden])")) return;
+    // Escape in a search box with text clears the search; only an empty box leaves the list.
+    if (nodes && e.target === nodes.q && nodes.q.value) {
+      e.preventDefault();
+      clearTimeout(L.searchTimer); L.searchTimer = 0;
+      nodes.q.value = ""; L.query = ""; renderRows(); announce();
+      return;
+    }
     e.preventDefault();
     goBack();
   }

@@ -43,7 +43,7 @@
   const VIEWS = AC.VIEWS || ["day", "week", "month", "year"];
   const VIEW_LABEL = { day: "Day", week: "Week", month: "Month", year: "Year" };
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const SIBLINGS = ["act-dashboard", "act-medals", "act-report"];
+  const SIBLINGS = ["act-dashboard", "act-medals", "act-report", "ex-progress"];
 
   const S = {
     view: "day", anchor: null, onBack: null,

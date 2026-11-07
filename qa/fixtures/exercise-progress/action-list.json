@@ -1,0 +1,80 @@
+{
+ "code": 200,
+ "msg": "OK",
+ "traceId": "fixture",
+ "success": true,
+ "data": [
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM012.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 512,
+   "name": "Seated Chest Fly",
+   "actionNo": "LM012",
+   "sideNum": 2,
+   "countType": 1
+  },
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM030.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 530,
+   "name": "Single-Arm Row (R)",
+   "actionNo": "LM030",
+   "sideNum": 1,
+   "countType": 1
+  },
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM031.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 531,
+   "name": "Single-Arm Row (L)",
+   "actionNo": "LM031",
+   "sideNum": 1,
+   "countType": 1
+  },
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM070.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 570,
+   "name": "Hammer Curl",
+   "actionNo": "LM070",
+   "sideNum": 1,
+   "countType": 1
+  },
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM060.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 560,
+   "name": "Plank",
+   "actionNo": "LM060",
+   "sideNum": 0,
+   "countType": 2
+  },
+  {
+   "actionType": 3,
+   "picUrl": "https://power.renhesports.com/filestore/power/action-pic/LM061.png",
+   "custom": false,
+   "sideWeight": 50,
+   "consume": 10,
+   "id": 561,
+   "name": "Push-up",
+   "actionNo": "LM061",
+   "sideNum": 0,
+   "countType": 1
+  }
+ ]
+}

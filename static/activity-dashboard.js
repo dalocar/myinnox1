@@ -372,7 +372,7 @@
     pendingFocus = "#act-medal-btn";
     el("act-dashboard").hidden = true;
     el("act-medals").hidden = false;
-    ["act-explorer", "act-report"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
+    ["act-explorer", "act-report", "ex-progress"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
     if (S.badges.status === "error") load("badges");
     el("act-medals").innerHTML = "";
     renderMedalsPage();
@@ -401,6 +401,7 @@
     try {
       await api(`/sport/record/delete/${r.sportRecordId}`, { method: "POST" });
       toast(t("Deleted."));
+      if (window.ExerciseProgressUI) ExerciseProgressUI.forgetWorkout(r.sportRecordId);
       loadAll();
     } catch (e) {
       toast(t("Delete failed: {msg}", { msg: e.message }), true);
@@ -465,7 +466,7 @@
       const wasMedals = medalsOpen;
       medalsOpen = false;
       el("act-dashboard").hidden = false;
-      ["act-medals", "act-explorer", "act-report"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
+      ["act-medals", "act-explorer", "act-report", "ex-progress"].forEach((id) => { const n = el(id); if (n) n.hidden = true; });
       renderAll();
       const f = pendingFocus; pendingFocus = "";
       if (f || wasMedals) {

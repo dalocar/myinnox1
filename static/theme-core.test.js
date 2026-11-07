@@ -48,7 +48,7 @@ test("all theme blocks define the same tokens", () => {
   for (const s of sets.slice(1)) assert.deepEqual([...s].sort(), [...sets[0]].sort());
 });
 test("components use no colour literals", () => {
-  const files = ["style.css", ...fs.readdirSync(__dirname).filter((f) => /^activity-.*\.css$/.test(f))];
+  const files = ["style.css", ...fs.readdirSync(__dirname).filter((f) => /^(activity-.*|exercise-progress)\.css$/.test(f))];
   const css = files.map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n")
     .replace(/\/\*[\s\S]*?\*\//g, "").replace(/url\("data:[^)]*\)/g, "");
   const hits = css.match(/:[^;{}]*(#[0-9a-fA-F]{3,8}\b|rgba?\()[^;{}]*/g) || [];

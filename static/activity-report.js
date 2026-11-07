@@ -30,11 +30,11 @@
   });
 
   const C = () => window.ActivityCore;
-  const SIBLINGS = ["act-dashboard", "act-medals", "act-explorer"];
+  const SIBLINGS = ["act-dashboard", "act-medals", "act-explorer", "ex-progress"];
   const DUMBBELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>';
   const BOX = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 24l24-10 24 10-24 10zM8 24v18l24 10 24-10V24M32 34v18"/></svg>';
 
-  const S = { id: null, row: null, onBack: null, token: 0, state: "idle", detail: null, error: "", open: false };
+  const S = { id: null, row: null, onBack: null, token: 0, state: "idle", detail: null, error: "", open: false, child: false };
 
   const num = (v) => (Number.isFinite(+v) ? +v : 0);
   const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : "");
@@ -160,7 +160,18 @@
     const head = el("div", "rp-group-head");
     head.appendChild(imgBox(g.picUrl, "rp-pic"));
     const info = el("div", "rp-group-info");
-    const name = el("h4", "rp-group-name", g.actionName || g.actionNo || "-");
+    const name = el("h4", "rp-group-name");
+    const label = g.actionName || g.actionNo || "-";
+    if (window.ExerciseProgressUI && g.actionId != null) {
+      // Opens Exercise Progress for this exercise; Back there returns to this report.
+      const b = el("button", "rp-group-link", label);
+      b.type = "button";
+      b.dataset.actionId = String(g.actionId);
+      b.setAttribute("aria-label", t("View progress of {name}", { name: label }));
+      b.addEventListener("click", () => openProgress(g, label));
+      b.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>');
+      name.appendChild(b);
+    } else name.textContent = label;
     info.appendChild(name);
     const n = g.totalSets;
     info.appendChild(el("div", "rp-group-meta", (n === 1 ? t("{n} set", { n }) : t("{n} sets", { n })) + " · " + t("{n} reps", { n: g.totalReps })));
@@ -294,12 +305,35 @@
   function close() {
     S.token++; // drop in-flight responses
     S.open = false;
+    S.child = false;
     document.removeEventListener("keydown", onKey);
     const root = $("act-report");
     if (root) { root.hidden = true; root.textContent = ""; }
   }
 
+  // Exercise Progress replaces the report on screen; its Back shows this same report again
+  // (state, scroll position and focus preserved - no reload).
+  function openProgress(g, label) {
+    const root = $("act-report");
+    if (!root || !window.ExerciseProgressUI) return;
+    const y = window.scrollY;
+    S.child = true;
+    ExerciseProgressUI.open(g.actionId, {
+      name: label,
+      onBack: () => {
+        S.child = false;
+        if (!S.open) return;
+        root.hidden = false;
+        ["act-dashboard", "act-medals", "act-explorer", "ex-progress"].forEach((id) => { const n = $(id); if (n) n.hidden = true; });
+        window.scrollTo(0, y);
+        const btn = root.querySelector('.rp-group-link[data-action-id="' + String(g.actionId).replace(/"/g, "") + '"]');
+        if (btn) btn.focus({ preventScroll: true });
+      },
+    });
+  }
+
   function onKey(e) {
+    if (S.child) return;
     if (e.key !== "Escape" || e.defaultPrevented || !S.open) return;
     const root = $("act-report");
     if (!root || root.hidden) { S.open = false; return; }
@@ -315,6 +349,7 @@
     S.row = opts.row || null;
     S.onBack = opts.onBack || null;
     S.open = true;
+    S.child = false;
     SIBLINGS.forEach((id) => { const n = $(id); if (n) n.hidden = true; });
     root.hidden = false;
     document.removeEventListener("keydown", onKey);

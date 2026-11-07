@@ -53,6 +53,11 @@ async function api(path, opts = {}) {
     const msg = (body && (body.msg || body.proxyError)) || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.body = body;
+    if (!res.ok) { // lets callers (Exercise Progress) retry 429/5xx and honour Retry-After
+      err.status = res.status;
+      const ra = res.headers && res.headers.get && res.headers.get("Retry-After");
+      if (ra) err.retryAfterRaw = ra;
+    }
     throw err;
   }
   return body;
@@ -72,9 +77,11 @@ function showLoggedIn(email) {
   $("main-section").hidden = false;
   currentEmail = email;
   $("userbar").innerHTML = `<span id="user-email">${escapeHtml(email)}</span> <button id="logout-btn" class="secondary">${escapeHtml(t("Log out"))}</button>`;
-  $("logout-btn").onclick = () => {
+  $("logout-btn").onclick = async () => {
     store.remove(TOKEN_KEY);
     store.remove(EMAIL_KEY);
+    // Wipe the on-device Exercise Progress cache (bounded wait so a stuck database never blocks logout).
+    try { if (window.ExerciseProgressUI) await Promise.race([ExerciseProgressUI.clearAll(), new Promise((r) => setTimeout(r, 2000))]); } catch (e) { /* reload anyway */ }
     location.reload();
   };
 }
@@ -1029,6 +1036,7 @@ async function deleteRecord(id) {
   try {
     await api(`/sport/record/delete/${id}`, { method: "POST" });
     toast(t("Deleted."));
+    if (window.ExerciseProgressUI) ExerciseProgressUI.forgetWorkout(id);
     loadHistory();
   } catch (e) {
     toast(t("Delete failed: {msg}", { msg: e.message }), true);

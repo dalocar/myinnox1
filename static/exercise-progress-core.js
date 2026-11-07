@@ -330,7 +330,7 @@
   }
   const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // withRetry(fn, {maxRetries, sleep, onRetry(attempt, delayMs, err), shouldStop}) -> resolves with fn's result,
+  // withRetry(fn, {maxRetries, sleep, onRetry(attempt, delayMs, err), shouldStop, isRetryable(err), delayFor(err, delayMs)}) -> resolves with fn's result,
   // or rejects with the last error. Honours err.retryAfter (ms) as the minimum wait.
   async function withRetry(fn, opts) {
     const o = opts || {};
@@ -339,8 +339,10 @@
     for (let attempt = 0; ; attempt++) {
       try { return await fn(attempt); }
       catch (err) {
-        if (attempt >= max || !isRetryable(err) || (typeof o.shouldStop === "function" && o.shouldStop())) throw err;
-        const delay = retryDelay(attempt + 1, err && err.retryAfter);
+        const retryable = typeof o.isRetryable === "function" ? o.isRetryable(err) : isRetryable(err);
+        if (attempt >= max || !retryable || (typeof o.shouldStop === "function" && o.shouldStop())) throw err;
+        let delay = retryDelay(attempt + 1, err && err.retryAfter);
+        if (typeof o.delayFor === "function") { const d = o.delayFor(err, delay); if (d != null) delay = d; }
         if (typeof o.onRetry === "function") o.onRetry(attempt + 1, delay, err);
         await sleep(delay);
       }
@@ -390,6 +392,82 @@
     return { done: st.done, failed: st.failed, stopped: st.stopped, paused: st.paused, remaining: queue.length, maxActive: st.maxActive };
   }
 
+  // ---------- WAF pacing ----------
+  // The owner's Cloudflare rule: per IP, 60 requests per 10 s, then Block for 10 s (HTTP 429, likely an HTML body,
+  // likely no Retry-After). It counts every /api call of every tab and device behind the IP. The sync stays well
+  // under it: at most 4 sync requests in any 1 s and at most 40 requests in total (sync + every other api() call of
+  // this tab) in any rolling 10 s, leaving 20 per 10 s for the rest. After a block: half rate for the rest of the sync.
+  const PACE = { perSecond: 4, perWindow: 40, windowMs: 10000, halfPerSecond: 2, halfPerWindow: 20, cooldownMs: 10000, jitterMinMs: 1000, jitterMaxMs: 3000 };
+
+  // Sliding log of request start times shared by app.js `api()` and the sync pacer (one per tab). `cooldownUntil`
+  // is the tab-wide "blocked until" time after a 429.
+  function makeRequestLog(now) {
+    const clock = now || (() => Date.now());
+    const times = [];
+    const log = {
+      times, cooldownUntil: 0,
+      record(t) { times.push(t == null ? clock() : t); const cut = clock() - 60000; while (times.length && times[0] <= cut) times.shift(); },
+      count(ms, t) { const n = t == null ? clock() : t; let c = 0; for (let i = times.length - 1; i >= 0 && times[i] > n - ms; i--) c++; return c; },
+    };
+    return log;
+  }
+  const requestLog = makeRequestLog();
+
+  // makePacer({log, now, sleep, random}) -> {acquire, block, waitMs, halt, isHalf, blocks, cooldownLeft}. One per sync.
+  function makePacer(o) {
+    const opts = o || {};
+    const log = opts.log || requestLog, clock = opts.now || (() => Date.now()), sleep = opts.sleep || defaultSleep, random = opts.random || Math.random;
+    const own = [];
+    let half = false, blocks = 0, lastBlockAt = -Infinity, halted = false;
+    const limits = () => (half ? { sec: PACE.halfPerSecond, win: PACE.halfPerWindow } : { sec: PACE.perSecond, win: PACE.perWindow });
+    // Milliseconds until the next sync request may start (0 = now).
+    function waitMs(at) {
+      const t = at == null ? clock() : at;
+      if (log.cooldownUntil > t) return log.cooldownUntil - t;
+      const L = limits();
+      let w = 0;
+      const sec = own.filter((x) => x > t - 1000);
+      if (sec.length >= L.sec) w = Math.max(w, sec[sec.length - L.sec] + 1000 - t);
+      const win = log.times.filter((x) => x > t - PACE.windowMs);
+      if (win.length >= L.win) w = Math.max(w, win[win.length - L.win] + PACE.windowMs - t);
+      return Math.max(0, w);
+    }
+    // Waits for a slot, records the request in the shared log and returns its start time; null if stopped/halted.
+    async function acquire(shouldStop, onWait) {
+      for (;;) {
+        if (halted || (typeof shouldStop === "function" && shouldStop())) return null;
+        const w = waitMs();
+        if (w <= 0) break;
+        if (typeof onWait === "function") onWait(w, log.cooldownUntil > clock() ? "cooldown" : "pace");
+        await sleep(Math.min(w, 1000));
+      }
+      const t = clock();
+      own.push(t);
+      while (own.length && own[0] <= t - 1000) own.shift();
+      log.record(t);
+      return t;
+    }
+    // A 429 was received for a request that started at `startedAt`. Any 429 counts as a block, whatever its body.
+    // -> {cooldownMs, second (pause the sync), repeat (it was already in flight before the current block)}
+    function block(retryAfterMs, startedAt) {
+      const t = clock();
+      if (startedAt != null && startedAt < lastBlockAt) return { cooldownMs: Math.max(0, log.cooldownUntil - t), second: false, repeat: true };
+      blocks++; lastBlockAt = t; half = true;
+      const ra = num(retryAfterMs);
+      const jitter = PACE.jitterMinMs + Math.min(PACE.jitterMaxMs - PACE.jitterMinMs, Math.floor(random() * (PACE.jitterMaxMs - PACE.jitterMinMs + 1)));
+      log.cooldownUntil = Math.max(log.cooldownUntil, t + Math.max(ra === null ? 0 : ra, PACE.cooldownMs) + jitter);
+      return { cooldownMs: log.cooldownUntil - t, second: blocks >= 2, repeat: false };
+    }
+    return {
+      acquire, block, waitMs, halt: () => { halted = true; },
+      isHalf: () => half, blocks: () => blocks, cooldownLeft: () => Math.max(0, log.cooldownUntil - clock()),
+    };
+  }
+
+  // N4: a listing that would remove more than max(5, 20 %) of the cache at once is suspicious (an upstream cap or a
+  // partial answer): skip that purge.
+  const purgeAllowed = (stale, cached) => num(stale) <= Math.max(5, Math.floor(nz(cached) * 0.2));
+
   // ---------- account scoping ----------
   // Non-cryptographic 53-bit hash (cyrb53) so the raw email is never part of the database name.
   function accountKey(email) {
@@ -414,6 +492,7 @@
     summarizeWorkout, kindFor, cutoffFor, buildSeries, exerciseOptions,
     makeWindow, allWindow, bisectWindow, isFull, enumerateRecords, diffIds,
     parseRetryAfter, retryDelay, isRetryable, isTransport, withRetry, makeGate, runPool,
+    PACE, makeRequestLog, requestLog, makePacer, purgeAllowed,
     accountKey, dbName,
   };
 });

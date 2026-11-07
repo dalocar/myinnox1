@@ -395,3 +395,86 @@ test("an empty listing never makes anything stale (a 200 with [] must not wipe t
   assert.deepEqual(C.diffIds([], cache, { coveredFrom: "2024-01-01" }).stale, []);
   assert.deepEqual(C.diffIds(null, cache, { coveredFrom: "2024-01-01" }).stale, []);
 });
+
+// ---- WAF pacing
+function fakeClock(start) {
+  let t = start || 100000;
+  return { now: () => t, sleep: async (ms) => { t += ms; }, advance: (ms) => { t += ms; } };
+}
+async function runN(p, n) { const out = []; for (let i = 0; i < n; i++) out.push(await p.acquire()); return out; }
+const maxIn = (times, ms) => { let m = 0; for (let i = 0; i < times.length; i++) { let c = 0; for (let j = i; j < times.length && times[j] < times[i] + ms; j++) c++; m = Math.max(m, c); } return m; };
+
+test("pacer: never more than 4 sync requests in any 1 s", async () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep });
+  const t = await runN(p, 40);
+  assert.ok(maxIn(t, 1000) <= 4, "burst " + maxIn(t, 1000));
+  assert.equal(maxIn(t.slice(0, 4), 1), 4); // the first 4 go at once
+});
+test("pacer: never more than 40 requests in any rolling 10 s, over a long run", async () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep });
+  const t = await runN(p, 300);
+  assert.ok(maxIn(t, 10000) <= 40, "window " + maxIn(t, 10000));
+  assert.ok(maxIn(t, 10000) >= 39); // and it does use the budget
+});
+test("pacer: other api() calls in the shared log count against the 40 / 10 s budget", async () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep });
+  for (let i = 0; i < 30; i++) log.record(); // UI calls (counted, never throttled)
+  const t = await runN(p, 15);
+  const all = log.times.slice().sort((a, b) => a - b);
+  assert.ok(maxIn(all, 10000) <= 40);
+  assert.ok(t[10] >= 100000 + 10000, "the 11th sync request waits for the UI calls to age out");
+});
+test("pacer: a 429 sets a cooldown of max(Retry-After, 10 s) + 1..3 s jitter, then half rate", async () => {
+  for (const r of [0, 0.5, 0.9999]) {
+    const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep, random: () => r });
+    const s = await p.acquire();
+    const b = p.block(null, s);
+    assert.ok(b.cooldownMs >= 11000 && b.cooldownMs <= 13000, String(b.cooldownMs));
+    assert.equal(b.second, false); assert.equal(p.isHalf(), true);
+    assert.equal(p.waitMs(), b.cooldownMs); // nothing goes during the cooldown
+  }
+  const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep, random: () => 0 });
+  const b = p.block(30000, null);
+  assert.equal(b.cooldownMs, 31000); // a longer Retry-After wins
+  const t = await runN(p, 60);
+  assert.ok(t[0] >= 100000 + 31000);
+  assert.ok(maxIn(t, 1000) <= 2 && maxIn(t, 10000) <= 20, "half rate");
+});
+test("pacer: a second 429 in the same sync says pause; one already in flight before the block does not", async () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now), p = C.makePacer({ log, now: c.now, sleep: c.sleep });
+  const a = await p.acquire(), b = await p.acquire();
+  c.advance(200);
+  assert.equal(p.block(null, a).second, false);
+  const late = p.block(null, b);
+  assert.equal(late.second, false); assert.equal(late.repeat, true);
+  const after = await p.acquire();
+  assert.ok(after >= log.cooldownUntil);
+  assert.equal(p.block(null, after).second, true);
+  p.halt();
+  assert.equal(await p.acquire(), null);
+});
+test("pacer: the cooldown is shared by every pacer on the same log (tab-wide)", async () => {
+  const c = fakeClock(), log = C.makeRequestLog(c.now);
+  C.makePacer({ log, now: c.now, sleep: c.sleep, random: () => 0 }).block(null, null);
+  const p2 = C.makePacer({ log, now: c.now, sleep: c.sleep });
+  assert.equal(p2.waitMs(), 11000);
+  assert.equal(p2.isHalf(), false);
+});
+test("N4 purge guard: a suspiciously large purge is skipped, a few deletions still purge", () => {
+  assert.equal(C.purgeAllowed(79, 86), false); // cap 7 vs 86 cached
+  assert.equal(C.purgeAllowed(3, 86), true);
+  assert.equal(C.purgeAllowed(1, 86), true);
+  assert.equal(C.purgeAllowed(17, 86), true);  // 20 %
+  assert.equal(C.purgeAllowed(18, 86), false);
+  assert.equal(C.purgeAllowed(5, 6), true);    // floor of 5
+  assert.equal(C.purgeAllowed(6, 6), false);
+});
+test("withRetry honours isRetryable / delayFor overrides", async () => {
+  const waits = []; let n = 0;
+  const r = await C.withRetry(async () => { n++; if (n < 3) { const e = new Error("rl"); e.status = 429; e.rateLimited = true; throw e; } return 1; },
+    { sleep: async (ms) => waits.push(ms), delayFor: (e) => (e.rateLimited ? 0 : null) });
+  assert.equal(r, 1); assert.deepEqual(waits, [0, 0]);
+  n = 0;
+  await assert.rejects(C.withRetry(async () => { n++; throw Object.assign(new Error("x"), { status: 503 }); }, { sleep: async () => {}, isRetryable: () => false }));
+  assert.equal(n, 1);
+});

@@ -397,11 +397,12 @@ function modeFieldStored(f, shown) { return f.unit === "force" ? Units.toTenths(
 function modeFieldsCell(step, i) {
   const m = StepModeCore.modeOf(step);
   const vals = StepModeCore.values(step);
+  const progress = hasProgressIcon(step) ? progressButton(step, i) : "";
   return `<div class="mode-fields">${m.def.fields.map((f) => {
     const id = `step-${i}-${f.key}`;
     const label = f.unit === "force" ? Units.text(t(f.label)) : t(f.label);
     return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="0" step="${f.unit === "force" ? "0.1" : "0.05"}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key])}"></label>`;
-  }).join("")}</div>`;
+  }).join("")}${progress}</div>`;
 }
 
 // Is this step's load column showing mode fields instead of the plain weight?
@@ -421,7 +422,7 @@ function renderBulkModeSelect() {
 function renderStepsTable() {
   const body = $("steps-body");
   body.innerHTML = "";
-  if ($("steps-mode-all") && !$("steps-mode-all").options.length) renderBulkModeSelect();
+  renderBulkModeSelect();
   // Warm-up and stretch steps (added in the official app) are kept untouched on save but not editable here.
   const extra = [["Warm up", currentCourse.warmUpStepList], ["Stretch", currentCourse.relaxStepList]]
     .filter(([, l]) => Array.isArray(l) && l.length)
@@ -459,9 +460,11 @@ function renderStepsTable() {
       const f = StepModeCore.modeOf(step).def.fields.find((x) => x.key === input.dataset.modeKey);
       input.addEventListener("input", () => {
         const val = Number(input.value);
-        if (input.value === "" || !Number.isFinite(val) || val < 0) return;
-        StepModeCore.setValue(step, f.key, modeFieldStored(f, val));
+        // Empty, non-numeric or negative input counts as 0, so saving is blocked instead of keeping the old value.
+        StepModeCore.setValue(step, f.key, input.value === "" || !Number.isFinite(val) || val < 0 ? 0 : modeFieldStored(f, val));
       });
+      // Show what is actually kept (limits applied) once the field is left.
+      input.addEventListener("change", () => { input.value = modeFieldValue(f, StepModeCore.values(step)[f.key]); });
     });
     tr.querySelectorAll("input[data-field]").forEach((input) => {
       input.addEventListener("input", () => {
@@ -698,6 +701,7 @@ if ($("steps-mode-all")) $("steps-mode-all").addEventListener("change", (e) => {
 
 async function saveProgram() {
   if (!currentCourse) return;
+  (currentCourse.mainStepList || []).forEach((s) => StepModeCore.normalize(s));
   for (const [i, s] of (currentCourse.mainStepList || []).entries()) {
     const bad = StepModeCore.validate(s);
     if (bad) { toast(t("Step {n} ({name}): {msg}", { n: i + 1, name: s.actionName || "", msg: t(bad) }), true); return; }

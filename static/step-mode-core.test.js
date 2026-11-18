@@ -72,5 +72,44 @@ test("validate: non-standard modes need values above zero", () => {
   assert.equal(M.validate({ mode: 6, modeParam: null }), null);
   assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":150,"kgLX2":100}' }), null);
   assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":0,"kgLX2":100}' }), "Enter a force above zero.");
-  assert.equal(M.validate({ mode: 3, modeParam: "{}" }), "Enter a value above zero.");
+  assert.equal(M.validate({ mode: 3, modeParam: '{"kgSD1":0}' }), "Enter a value above zero.");
+});
+
+test("validate checks the values the editor shows: missing or malformed params fall back to defaults", () => {
+  for (const p of [null, "", "{bad", "[1,2]", "{}"]) assert.equal(M.validate({ mode: 1, modeParam: p }), null);
+  assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":0,"kgLX2":100}' }), "Enter a force above zero.");
+});
+
+test("normalize rewrites missing or malformed params with the shown defaults, and only then", () => {
+  const bad = { mode: 2, modeParam: "{bad" };
+  assert.equal(M.normalize(bad), true);
+  assert.equal(bad.modeParam, '{"kgTL1":100,"kgTL2":150,"kgTL3":500}');
+  const partial = { mode: 1, modeParam: '{"kgLX1":200}' };
+  M.normalize(partial);
+  assert.equal(partial.modeParam, '{"kgLX1":200,"kgLX2":100}');
+  const stale = { mode: 3, modeParam: '{"kgSD1":800,"kgLX1":150}' };
+  assert.equal(M.normalize(stale), false);
+  assert.equal(stale.modeParam, '{"kgSD1":800,"kgLX1":150}');
+  const unknown = { mode: 6, modeParam: null };
+  assert.equal(M.normalize(unknown), false);
+  assert.equal(unknown.modeParam, null);
+  const std = { mode: 0, modeParam: "" };
+  assert.equal(M.normalize(std), false);
+});
+
+test("values are capped at sane limits", () => {
+  const s = { mode: 1, modeParam: "{}" };
+  M.setValue(s, "kgLX1", 999999990);
+  assert.equal(M.values(s).kgLX1, M.MAX.force);
+  const t = { mode: 3, modeParam: "{}" };
+  M.setValue(t, "kgSD1", 99999999);
+  assert.equal(t.modeParam, '{"kgSD1":' + M.MAX.mm + '}');
+  assert.equal(M.serialize(2, { kgTL3: 1e9 }), '{"kgTL1":100,"kgTL2":150,"kgTL3":' + M.MAX.mm + '}');
+});
+
+test("a zero value is kept as zero (not replaced by the default) so validate can block it", () => {
+  const s = { mode: 1, modeParam: "{}" };
+  M.setValue(s, "kgLX1", 0);
+  assert.equal(M.values(s).kgLX1, 0);
+  assert.equal(M.validate(s), "Enter a force above zero.");
 });

@@ -25,6 +25,8 @@
       { key: "kgSD1", label: "Speed (m/s)", unit: "mm", def: 500 },
     ] },
   ];
+  // Sanity caps in stored units (the machine's real limits are unknown): 300 kg, 5 m, 5 m/s.
+  const MAX = { force: 3000, mm: 5000 };
   const DESCRIPTIONS = {
     0: "Pull-out and return force are equal.",
     1: "Pull-out force is lower than the return force.",
@@ -50,17 +52,18 @@
     } catch { return {}; }
   }
 
-  const clean = (v, fallback) => {
+  const clean = (v, fallback, max) => {
     const n = Math.round(Number(v));
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
+    return Number.isFinite(n) && n >= 0 ? (max ? Math.min(n, max) : n) : fallback;
   };
+  const cap = (f) => MAX[f.unit];
 
   // values(step) -> {key: stored integer} for the step's mode, defaults for missing/invalid keys.
   function values(step) {
     const m = modeOf(step);
     const param = parseParam(step && step.modeParam);
     const out = {};
-    if (m.def) m.def.fields.forEach((f) => { out[f.key] = clean(param[f.key], f.def); });
+    if (m.def) m.def.fields.forEach((f) => { out[f.key] = clean(param[f.key], f.def, cap(f)); });
     return out;
   }
 
@@ -69,7 +72,7 @@
     const def = byId(modeId);
     if (!def || !def.fields.length) return "{}";
     const o = {};
-    def.fields.forEach((f) => { o[f.key] = clean(vals && vals[f.key], f.def); });
+    def.fields.forEach((f) => { o[f.key] = clean(vals && vals[f.key], f.def, cap(f)); });
     return JSON.stringify(o);
   }
 
@@ -88,7 +91,8 @@
     const m = modeOf(step);
     if (!m.def || !m.def.fields.some((f) => f.key === key)) return step;
     const v = values(step);
-    v[key] = clean(stored, v[key]);
+    const f = m.def.fields.find((x) => x.key === key);
+    v[key] = clean(stored, v[key], cap(f));
     step.modeParam = serialize(m.id, v);
     return step;
   }
@@ -107,19 +111,34 @@
     return n;
   }
 
-  // -> null when fine, else an English i18n key. Only for steps in a known, non-standard mode.
+  // Does the raw modeParam lack a usable value for any field of the step's known non-standard mode?
+  // Such a step shows defaults in the editor; it is rewritten with them on save (see normalize).
+  function needsNormalize(step) {
+    const m = modeOf(step);
+    if (!m.def || !m.def.fields.length) return false;
+    const param = parseParam(step.modeParam);
+    return m.def.fields.some((f) => !(Number.isFinite(Number(param[f.key])) && param[f.key] !== null && param[f.key] !== "" && Number(param[f.key]) >= 0));
+  }
+
+  // Write the effective values (stored ones, defaults for missing/invalid) back to modeParam. Returns true if changed.
+  function normalize(step) {
+    if (!needsNormalize(step)) return false;
+    step.modeParam = serialize(modeOf(step).id, values(step));
+    return true;
+  }
+
+  // -> null when fine, else an English i18n key. Checks the values the editor shows (defaults included).
   function validate(step) {
     const m = modeOf(step);
     if (!m.def || !m.def.fields.length) return null;
-    const param = parseParam(step.modeParam);
+    const v = values(step);
     for (const f of m.def.fields) {
-      const n = Number(param[f.key]);
-      if (!(n > 0)) return f.unit === "force" ? "Enter a force above zero." : "Enter a value above zero.";
+      if (!(v[f.key] > 0)) return f.unit === "force" ? "Enter a force above zero." : "Enter a value above zero.";
     }
     return null;
   }
 
-  const api = { MODES, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, validate };
+  const api = { MODES, MAX, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, needsNormalize, normalize, validate };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.StepModeCore = api;
 })(typeof window !== "undefined" ? window : globalThis);

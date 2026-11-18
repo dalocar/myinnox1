@@ -317,42 +317,90 @@ async function renderEditor(isNew) {
   renderStepsTable();
 }
 
-// Weight input + read-only weight-mode badge (from sideNum: Per side / Combined / No weight).
-// A step stores exactly what the input shows; sideNum 0 has no weight, so the input is
-// disabled (its stored value is left untouched).
-// Same badge under the exercise name: shown instead of the one in the weight cell on narrow
-// screens (the 4-column card grid is too tight for "Combined"); hidden on desktop by CSS.
-function weightModeInline(step) {
-  const mode = WeightModeCore.modeFor(step.sideNum);
-  const badge = mode.label ? `<span class="wm-badge wm-badge-inline wm-${mode.key}" aria-hidden="true">${escapeHtml(t(mode.label))}</span>` : "";
-  // Combined: same live total under the name on narrow screens (aria-hidden; the one in the
-  // weight cell stays the accessible, announced copy and is only visually hidden there).
-  const total = mode.key === "combined" && StepModeCore.modeOf(step).id === 0 ? `<span class="wm-total wm-total-inline" aria-hidden="true">${escapeHtml(combinedTotalText(step))}</span>` : "";
-  return badge + total;
+// Weight mode of a step (from sideNum: Per side / Combined / No weight), a small read-only label under the
+// exercise name. Combined gets an info icon whose tooltip explains it (both cables work at once, the entered
+// load is per cable) with the live total. A step stores exactly what the load input shows; sideNum 0 has no
+// weight, so the input is disabled (its stored value is left untouched).
+const INFO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+
+// Combined (sideNum 2): both cables work at once, the entered number is the resistance on EACH cable and the
+// machine's workout screen shows the total. Computed from the stored tenths (see WeightModeCore.breakdown) in the
+// account unit. In a non-standard training mode there is no single load, so no total.
+function combinedTipText(step) {
+  const b = WeightModeCore.breakdown(step.sideNum, step.sideWeight);
+  if (!b.showTotal) return "";
+  if (StepModeCore.modeOf(step).id !== 0) return t("Combined: both cables work at once, so each force applies to each cable.");
+  const u = Units.label();
+  return t("Combined: both cables work at once and the load is per cable. {load} on each cable = {total} total.", {
+    load: `${Units.fmtTenths(b.perCable)} ${u}`, total: `${Units.fmtTenths(b.total)} ${u}`,
+  });
 }
 
-// Combined (sideNum 2): both cables work at once, the entered number is the resistance on
-// EACH cable and the machine's workout screen shows the total. Readout is computed from the
-// stored tenths (see WeightModeCore.totalTenths) in the account unit.
-function combinedTotalText(step) {
-  const b = WeightModeCore.breakdown(step.sideNum, step.sideWeight);
-  return b.showTotal ? t("×2 cables = {total} total", { total: `${Units.fmtTenths(b.total)} ${Units.label()}` }) : "";
+function weightModeBadge(step, i) {
+  const mode = WeightModeCore.modeFor(step.sideNum);
+  if (!mode.label) return "";
+  const badge = `<span class="wm-badge wm-${mode.key}" id="step-${i}-wm">${escapeHtml(t(mode.label))}</span>`;
+  if (mode.key !== "combined") return badge;
+  // Label and icon wrap together on narrow cards.
+  return `<span class="wm-group">${badge}<button type="button" class="wm-tip-btn" data-wm-tip="${i}" aria-expanded="false" aria-label="${escapeHtml(t("What does Combined mean?"))}" aria-describedby="step-${i}-tip">${INFO_ICON}</button></span>` +
+    `<span class="sr-only" id="step-${i}-tip">${escapeHtml(combinedTipText(step))}</span>`;
+}
+
+// One shared tooltip on <body> with fixed positioning (like the row menu), so the table's overflow container
+// can't clip it. Shows on hover and keyboard focus; a click or tap pins it until Escape, an outside tap or scroll.
+let wmTip = null;
+function hideWmTip() {
+  if (!wmTip) return;
+  wmTip.el.remove();
+  wmTip.btn.setAttribute("aria-expanded", "false");
+  wmTip = null;
+  document.removeEventListener("pointerdown", onWmTipOutside, true);
+  document.removeEventListener("keydown", onWmTipKey, true);
+  window.removeEventListener("scroll", hideWmTip, true);
+  window.removeEventListener("resize", hideWmTip);
+}
+function onWmTipOutside(e) { if (wmTip && !wmTip.btn.contains(e.target)) hideWmTip(); }
+function onWmTipKey(e) { if (e.key === "Escape") hideWmTip(); }
+function showWmTip(btn, step, pinned) {
+  if (wmTip && wmTip.btn === btn) { wmTip.pinned = wmTip.pinned || pinned; return; }
+  hideWmTip();
+  const el = document.createElement("div");
+  el.className = "wm-tip-pop";
+  el.setAttribute("role", "tooltip");
+  el.textContent = combinedTipText(step);
+  document.body.appendChild(el);
+  const r = btn.getBoundingClientRect();
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - el.offsetWidth / 2), window.innerWidth - el.offsetWidth - 8);
+  const top = r.bottom + 8 + el.offsetHeight > window.innerHeight - 8 ? r.top - el.offsetHeight - 8 : r.bottom + 8;
+  el.style.left = `${Math.round(left)}px`;
+  el.style.top = `${Math.round(Math.max(8, top))}px`;
+  btn.setAttribute("aria-expanded", "true");
+  wmTip = { el, btn, step, pinned };
+  document.addEventListener("pointerdown", onWmTipOutside, true);
+  document.addEventListener("keydown", onWmTipKey, true);
+  window.addEventListener("scroll", hideWmTip, true);
+  window.addEventListener("resize", hideWmTip);
+}
+function setupWmTip(btn, step) {
+  btn.addEventListener("mouseenter", () => showWmTip(btn, step, false));
+  btn.addEventListener("mouseleave", () => { if (wmTip && wmTip.btn === btn && !wmTip.pinned) hideWmTip(); });
+  btn.addEventListener("focus", () => showWmTip(btn, step, false));
+  btn.addEventListener("blur", () => { if (wmTip && wmTip.btn === btn) hideWmTip(); });
+  btn.addEventListener("click", () => {
+    if (wmTip && wmTip.btn === btn && wmTip.pinned) hideWmTip();
+    else { hideWmTip(); showWmTip(btn, step, true); }
+  });
 }
 
 function weightCell(step, i) {
   const mode = WeightModeCore.modeFor(step.sideNum);
   const combined = mode.key === "combined";
-  const badge = mode.label
-    ? `<span class="wm-badge wm-${mode.key}" id="step-${i}-wm"${combined ? ` title="${escapeHtml(t("Resistance on each cable; both cables work at once"))}"` : ""}>${escapeHtml(t(mode.label))}</span>`
-    : "";
-  const total = combined ? `<span class="wm-total" id="step-${i}-total" aria-live="polite">${escapeHtml(combinedTotalText(step))}</span>` : "";
   const aria = Units.text(t(combined ? "Load per cable (kg)" : "Load (kg)"));
-  const describedBy = [mode.label ? `step-${i}-wm` : "", combined ? `step-${i}-total` : ""].filter(Boolean).join(" ");
-  const input = `<input type="number" min="0" step="0.1" id="step-${i}-sideWeight" name="step-${i}-sideWeight" data-field="sideWeight" aria-label="${escapeHtml(aria)}"${combined ? ` title="${escapeHtml(aria)}"` : ""}${describedBy ? ` aria-describedby="${describedBy}"` : ""}${mode.hasWeight ? "" : " disabled"} value="${Units.fmtTenths(step.sideWeight ?? 0)}">`;
-  return (hasProgressIcon(step) ? `<span class="wt-row">${input}${progressButton(step, i)}</span>` : input) + `${badge}${total}`;
+  const describedBy = [mode.label ? `step-${i}-wm` : "", combined ? `step-${i}-tip` : ""].filter(Boolean).join(" ");
+  return `<input type="number" min="0" step="0.1" id="step-${i}-sideWeight" name="step-${i}-sideWeight" data-field="sideWeight" aria-label="${escapeHtml(aria)}"${combined ? ` title="${escapeHtml(aria)}"` : ""}${describedBy ? ` aria-describedby="${describedBy}"` : ""}${mode.hasWeight ? "" : " disabled"} value="${Units.fmtTenths(step.sideWeight ?? 0)}">`;
 }
 
-// Exercise Progress shortcut next to the load input: only for steps that have a weight (sideNum 1 or 2, or an unknown
+// Exercise Progress shortcut next to the exercise name: only for steps that have a weight (sideNum 1 or 2, or an unknown
 // mode with a weight set) and a known action. sideNum 0 steps (no weight) get none.
 // A course step points at its library action with actionLibraryId; workout sets use the same number as actionId.
 function stepActionId(step) {
@@ -409,12 +457,11 @@ function modeFieldsCell(step, i) {
   const m = StepModeCore.modeOf(step);
   const vals = StepModeCore.values(step);
   const lbs = StepModeCore.lbValues(step);
-  const progress = hasProgressIcon(step) ? progressButton(step, i) : "";
   return `<div class="mode-fields">${m.def.fields.map((f) => {
     const id = `step-${i}-${f.key}`;
     const label = f.unit === "force" ? Units.text(t(f.label)) : t(f.label);
     return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="${modeFieldValue(f, f.min)}" max="${modeFieldValue(f, f.max)}" step="${f.step}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key], lbs[f.key])}"></label>`;
-  }).join("")}${progress}</div>`;
+  }).join("")}</div>`;
 }
 
 // Is this step's load column showing mode fields instead of the plain weight?
@@ -433,6 +480,7 @@ function renderBulkModeSelect() {
 
 function renderStepsTable() {
   const body = $("steps-body");
+  hideWmTip();
   body.innerHTML = "";
   renderBulkModeSelect();
   // Warm-up and stretch steps (added in the official app) are kept untouched on save but not editable here.
@@ -450,7 +498,7 @@ function renderStepsTable() {
       </td>
       <td class="thumb">${step.picUrl ? `<img src="${escapeHtml(step.picUrl)}" alt="">` : ""}</td>
       <td class="num">${i + 1}</td>
-      <td class="action-name">${escapeHtml(step.actionName || "")}${weightModeInline(step)}${modeSelect(step, i)}</td>
+      <td class="action-name"><div class="an-title"><span class="an-name">${escapeHtml(step.actionName || "")}</span>${hasProgressIcon(step) ? progressButton(step, i) : ""}</div><div class="an-sub">${modeSelect(step, i)}${weightModeBadge(step, i)}</div></td>
       <td class="field" data-label="${t("Reps")}"><input type="number" min="0" id="step-${i}-count" name="step-${i}-count" data-field="count" aria-label="${t("Reps")}" value="${step.count ?? 0}"></td>
       <td class="field${usesModeFields(step) ? " mode-cell" : ""}" data-label="${escapeHtml(usesModeFields(step) ? t("Mode settings") : Units.text(t("Load (kg)")))}">${usesModeFields(step) ? modeFieldsCell(step, i) : weightCell(step, i)}</td>
       <td class="field" data-label="${t("Rest (s)")}"><input type="number" min="0" id="step-${i}-restTime" name="step-${i}-restTime" data-field="restTime" aria-label="${t("Rest (s)")}" value="${step.restTime ?? 0}"></td>
@@ -496,10 +544,14 @@ function renderStepsTable() {
         // shows/accepts the account unit (kg or lb), so convert back to tenths of kg here.
         step[input.dataset.field] = input.dataset.field === "sideWeight" ? Units.toTenths(val) : val;
         if (input.dataset.field === "sideWeight") {
-          tr.querySelectorAll(".wm-total").forEach((el) => { el.textContent = combinedTotalText(step); });
+          const tip = $(`step-${i}-tip`);
+          if (tip) tip.textContent = combinedTipText(step);
+          if (wmTip && wmTip.step === step) wmTip.el.textContent = combinedTipText(step);
         }
       });
     });
+    const tipBtn = tr.querySelector("[data-wm-tip]");
+    if (tipBtn) setupWmTip(tipBtn, step);
     const progressBtn = tr.querySelector("[data-step-progress]");
     if (progressBtn) { tr.classList.add("has-progress"); progressBtn.addEventListener("click", () => openStepProgress(step, i)); }
     const menuBtn = tr.querySelector(".row-menu-btn");

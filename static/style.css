@@ -263,13 +263,20 @@ table#steps-table td.action-name { width: 100%; min-width: 220px; font-weight: 6
 table#steps-table td.num, table#steps-table td.field, table#steps-table td.row-actions, table#steps-table th { white-space: nowrap; }
 table#steps-table td.field { width: 1%; }
 table#steps-table th.fld, table#steps-table td.field { text-align: center; }
-/* Read-only weight-mode badge under the weight input (Per side / Combined / No weight) */
-.wm-badge { display: block; margin-top: 2px; font-size: 11px; line-height: 1.2; color: var(--muted); font-weight: 600; }
-table#steps-table td.action-name .wm-badge-inline { display: none; }
-/* Combined exercises: live total under the weight input (both cables work at once) */
-.wm-total { display: block; margin-top: 2px; font-size: 11px; line-height: 1.2; color: var(--muted); font-weight: 600; white-space: normal; max-width: 120px; }
-table#steps-table td.field .wm-total { text-align: center; }
-table#steps-table td.action-name .wm-total-inline { display: none; }
+/* Exercise cell: title with the progress icon, then the mode select and the read-only weight-mode label */
+table#steps-table td.action-name .an-title { display: flex; align-items: center; gap: 6px; }
+table#steps-table td.action-name .an-name { min-width: 0; overflow-wrap: anywhere; }
+table#steps-table td.action-name .step-progress-btn { width: 28px; height: 28px; border-radius: 6px; }
+table#steps-table td.action-name .step-progress-btn svg { width: 16px; height: 16px; }
+table#steps-table td.action-name .an-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-weight: 400; }
+table#steps-table td.action-name .step-mode { margin-top: 0; }
+.wm-group { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.wm-badge { font-size: 11px; line-height: 1.2; color: var(--muted); font-weight: 600; }
+.wm-tip-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: help; border-radius: 50%; }
+.wm-tip-btn:hover, .wm-tip-btn:active, .wm-tip-btn[aria-expanded="true"] { background: transparent; border: 0; box-shadow: none; color: var(--text); }
+.wm-tip-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.wm-tip-btn svg { width: 16px; height: 16px; }
+.wm-tip-pop { position: fixed; z-index: 90; max-width: 230px; padding: 8px 10px; border-radius: 8px; background: var(--toast-bg); color: var(--toast-fg); font-size: 12px; line-height: 1.45; font-weight: 400; box-shadow: var(--shadow-lg); pointer-events: none; }
 /* Inline-edit cells: quiet underline at rest, full box on hover, ring on focus */
 table#steps-table input[type="number"] {
   width: 72px; min-height: 38px; padding: 6px 8px; text-align: center; display: block; margin: 0 auto;
@@ -451,19 +458,9 @@ table#steps-table td.thumb img, .program-card img.thumb, .action-card img.thumb,
     white-space: normal; line-height: 1.1; overflow-wrap: anywhere; /* long translated labels wrap instead of overlapping the next column */
   }
   table#steps-table td.field input { width: 100%; text-align: left; background: var(--surface); border-color: var(--input-border); margin: 0; min-height: 38px; padding: 4px 8px; }
-  /* weight mode: under the exercise name instead of under the (narrow) weight input */
-  table#steps-table td.action-name .wm-badge-inline { display: block; font-weight: 500; }
-  table#steps-table td.field .wm-badge { display: none; }
-  /* total under the exercise name; the cell copy stays for screen readers only */
-  table#steps-table td.action-name .wm-total-inline { display: block; font-weight: 500; margin-top: 0; }
-  table#steps-table td.field .wm-total { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* icon-only actions, top-right of the card */
   table#steps-table td.row-actions { position: absolute; top: 6px; right: 8px; width: auto; }
   table#steps-table td.row-actions button { width: 34px; height: 34px; }
-  /* progress icon: top-right of the card, left of the row menu; the name leaves room for it */
-  table#steps-table td.field .wt-row { display: block; }
-  table#steps-table td.field .step-progress-btn { position: absolute; top: 0; right: 46px; }
-  table#steps-table tr.has-progress td.action-name { padding-right: 98px; }
   /* drag handle as a slim strip on the left; up/down hidden on mobile */
   table#steps-table td.reorder { position: absolute; left: 0; top: 0; bottom: 0; width: 30px; display: flex; align-items: center; justify-content: center; padding: 0; }
   table#steps-table .reorder-btn.drag-handle { width: 26px; height: 100%; min-height: 0; border: 0; background: transparent; box-shadow: none; padding: 0; color: var(--muted); border-radius: var(--radius) 0 0 var(--radius); }
@@ -1128,7 +1125,6 @@ table#steps-table td.mode-cell { width: auto; }
 .mode-field { width: 72px; }
 .mode-field span { font-size: 11px; line-height: 1.15; color: var(--muted); font-weight: 600; overflow-wrap: anywhere; }
 .mode-field input { width: 72px; }
-.mode-fields .step-progress-btn { flex: none; }
 table#steps-table tr.has-mode td.field { vertical-align: bottom; }
 @media (min-width: 720px) and (max-width: 1023px) {
   .mode-fields { gap: 6px; }
@@ -1141,4 +1137,8 @@ table#steps-table tr.has-mode td.field { vertical-align: bottom; }
   .mode-field { width: auto; flex: 1 1 80px; }
   .mode-field input { width: 100%; }
   .step-mode { min-height: 38px; }
+}
+@media (pointer: coarse) {
+  table#steps-table td.action-name .step-progress-btn { width: 40px; height: 40px; }
+  .wm-tip-btn { width: 30px; height: 30px; }
 }

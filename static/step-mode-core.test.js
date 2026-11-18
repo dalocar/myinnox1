@@ -13,7 +13,8 @@ test("serialize matches what the official app stores", () => {
 test("serialize fills defaults and drops other modes' keys", () => {
   assert.equal(M.serialize(1, {}), '{"kgLX1":150,"kgLX2":100}');
   assert.equal(M.serialize(3, { kgSD1: 800, kgLX1: 999 }), '{"kgSD1":800}');
-  assert.equal(M.serialize(1, { kgLX1: -5, kgLX2: "x" }), '{"kgLX1":150,"kgLX2":100}');
+  assert.equal(M.serialize(1, { kgLX1: "x", kgLX2: "y" }), '{"kgLX1":150,"kgLX2":100}');
+  assert.equal(M.serialize(1, { kgLX1: -5, kgLX2: 100 }), '{"kgLX1":30,"kgLX2":20}');
   assert.equal(M.serialize(1, { kgLX1: 200.4 }), '{"kgLX1":200,"kgLX2":100}');
 });
 
@@ -53,7 +54,9 @@ test("setValue only touches fields of the active mode", () => {
   M.setValue(s, "kgSD1", 800);
   assert.equal(s.modeParam, '{"kgSD1":800}');
   M.setValue(s, "kgSD1", -1);
-  assert.equal(s.modeParam, '{"kgSD1":800}');
+  assert.equal(s.modeParam, '{"kgSD1":100}');
+  M.setValue(s, "kgSD1", "x");
+  assert.equal(s.modeParam, '{"kgSD1":100}');
 });
 
 test("setModeAll skips weightless and unknown-mode steps, reports the count", () => {
@@ -65,19 +68,6 @@ test("setModeAll skips weightless and unknown-mode steps, reports the count", ()
   assert.equal(steps[4].modeParam, '{"kgLX1":170,"kgLX2":90}');
   assert.equal(M.supportsMode({ sideNum: 0 }), false);
   assert.equal(M.supportsMode({ sideNum: 2 }), true);
-});
-
-test("validate: non-standard modes need values above zero", () => {
-  assert.equal(M.validate({ mode: 0, modeParam: "{}" }), null);
-  assert.equal(M.validate({ mode: 6, modeParam: null }), null);
-  assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":150,"kgLX2":100}' }), null);
-  assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":0,"kgLX2":100}' }), "Enter a force above zero.");
-  assert.equal(M.validate({ mode: 3, modeParam: '{"kgSD1":0}' }), "Enter a value above zero.");
-});
-
-test("validate checks the values the editor shows: missing or malformed params fall back to defaults", () => {
-  for (const p of [null, "", "{bad", "[1,2]", "{}"]) assert.equal(M.validate({ mode: 1, modeParam: p }), null);
-  assert.equal(M.validate({ mode: 1, modeParam: '{"kgLX1":0,"kgLX2":100}' }), "Enter a force above zero.");
 });
 
 test("normalize rewrites missing or malformed params with the shown defaults, and only then", () => {
@@ -95,24 +85,6 @@ test("normalize rewrites missing or malformed params with the shown defaults, an
   assert.equal(unknown.modeParam, null);
   const std = { mode: 0, modeParam: "" };
   assert.equal(M.normalize(std), false);
-});
-
-test("values are capped at sane limits", () => {
-  const s = { mode: 1, modeParam: "{}" };
-  M.setValue(s, "kgLX1", 999999990);
-  assert.equal(M.values(s).kgLX1, M.MAX.force);
-  assert.equal(M.MAX.force, 600);
-  const t = { mode: 3, modeParam: "{}" };
-  M.setValue(t, "kgSD1", 99999999);
-  assert.equal(t.modeParam, '{"kgSD1":' + M.MAX.mm + '}');
-  assert.equal(M.serialize(2, { kgTL3: 1e9 }), '{"kgTL1":100,"kgTL2":150,"kgTL3":' + M.MAX.mm + '}');
-});
-
-test("a zero value is kept as zero (not replaced by the default) so validate can block it", () => {
-  const s = { mode: 1, modeParam: "{}" };
-  M.setValue(s, "kgLX1", 0);
-  assert.equal(M.values(s).kgLX1, 0);
-  assert.equal(M.validate(s), "Enter a force above zero.");
 });
 
 test("imperial: lb keys are written after the kg keys, as the official app does", () => {
@@ -165,4 +137,76 @@ test("normalize adds missing or stale lb keys: always when the step has some, ot
 test("the official app's saved imperial eccentric data is already consistent", () => {
   const a = { mode: 1, modeParam: '{"kgLX1":150,"kgLX2":100,"kgTL1":100,"kgTL2":150,"kgTL3":500,"kgSD1":500,"lbLX1":331,"lbLX2":220}' };
   assert.equal(M.needsNormalize(a, { imperial: true }), false);
+});
+
+test("ranges measured in the official app: values clamp into min/max", () => {
+  const lim = (m, k) => M.byId(m).fields.find((f) => f.key === k);
+  assert.deepEqual([lim(1, "kgLX1").min, lim(1, "kgLX1").max], [30, 600]);
+  assert.deepEqual([lim(1, "kgLX2").min, lim(1, "kgLX2").max], [20, 590]);
+  assert.deepEqual([lim(2, "kgTL1").min, lim(2, "kgTL1").max], [20, 590]);
+  assert.deepEqual([lim(2, "kgTL2").min, lim(2, "kgTL2").max], [30, 600]);
+  assert.deepEqual([lim(2, "kgTL3").min, lim(2, "kgTL3").max], [20, 2500]);
+  assert.deepEqual([lim(3, "kgSD1").min, lim(3, "kgSD1").max], [100, 2500]);
+  const e = { mode: 1, modeParam: "{}" };
+  M.setValue(e, "kgLX1", 999999);
+  assert.equal(M.values(e).kgLX1, 600);
+  M.setValue(e, "kgLX1", 0);
+  assert.equal(M.values(e).kgLX1, 30);
+  assert.equal(M.serialize(2, { kgTL3: 1e9 }), '{"kgTL1":100,"kgTL2":150,"kgTL3":2500}');
+  assert.equal(M.serialize(3, { kgSD1: 5 }), '{"kgSD1":100}');
+});
+
+test("Concentric stays at least 1 kg below Eccentric, whichever field is edited", () => {
+  const s = { mode: 1, modeParam: "{}" };                       // 15 / 10
+  M.setValue(s, "kgLX1", 600); M.setValue(s, "kgLX2", 999999);   // concentric capped at 59 kg
+  assert.equal(s.modeParam, '{"kgLX1":600,"kgLX2":590}');
+  M.setValue(s, "kgLX1", 300);                                   // lowering Eccentric pulls Concentric down
+  assert.equal(M.values(s).kgLX2, 290);
+  M.setValue(s, "kgLX2", 400);                                   // the official app allows this; we clamp it
+  assert.equal(M.values(s).kgLX2, 290);
+  M.setValue(s, "kgLX1", 0);                                     // Eccentric min 3 kg -> Concentric at most 2 kg
+  assert.deepEqual([M.values(s).kgLX1, M.values(s).kgLX2], [30, 20]);
+});
+
+test("Spring max force stays at least 0.5 kg above Initial, whichever field is edited", () => {
+  const s = { mode: 2, modeParam: "{}" };                        // 10 / 15 / 0.5 m
+  M.setValue(s, "kgTL1", 9999);                                  // initial capped at 59 kg, max follows to 59.5
+  assert.deepEqual([M.values(s).kgTL1, M.values(s).kgTL2], [590, 595]);
+  M.setValue(s, "kgTL2", 0);                                     // max min 3 kg, but never below initial + 0.5
+  assert.equal(M.values(s).kgTL2, 595);
+  M.setValue(s, "kgTL1", 100); M.setValue(s, "kgTL2", 120);
+  assert.deepEqual([M.values(s).kgTL1, M.values(s).kgTL2], [100, 120]);
+});
+
+test("untouched stored values are not rewritten, even if the official app left an unordered pair", () => {
+  const s = { mode: 1, modeParam: '{"kgLX1":30,"kgLX2":400}' };
+  assert.equal(M.normalize(s, { imperial: false }), false);
+  assert.equal(s.modeParam, '{"kgLX1":30,"kgLX2":400}');
+});
+
+test("imperial: the typed pounds are kept in the lb key, not re-derived from the rounded kg", () => {
+  const s = { mode: 2, modeParam: "{}" };
+  M.setValue(s, "kgTL1", 181, { imperial: true, typed: 400 });      // 40.0 lb -> 18.1 kg
+  const p = JSON.parse(s.modeParam);
+  assert.deepEqual([p.kgTL1, p.lbTL1], [181, 400]);                 // derived would be 399
+  M.setValue(s, "kgTL2", 300, { imperial: true });                  // editing another field keeps lbTL1 as typed
+  assert.equal(JSON.parse(s.modeParam).lbTL1, 400);
+  M.setValue(s, "kgTL1", 200, { imperial: true });                  // a kg change without typed lb re-derives it
+  assert.equal(JSON.parse(s.modeParam).lbTL1, 441);
+  M.setValue(s, "kgTL1", 181, { imperial: true, typed: 999 });      // a typed value far from the kg value is ignored
+  assert.equal(JSON.parse(s.modeParam).lbTL1, 399);
+});
+
+test("the official app's own imperial program keeps its typed lb keys through normalize", () => {
+  const s = { mode: 2, modeParam: '{"lbLX1":150,"lbLX2":140,"kgLX1":68,"kgLX2":64,"lbTL1":610,"lbTL2":615,"kgTL3":500,"kgTL1":277,"kgTL2":279}' };
+  assert.equal(M.normalize(s, { imperial: true }), false);
+  assert.equal(M.needsNormalize(s, { imperial: true }), false);
+});
+
+test("lbValues returns the stored lb values that match the kg value, for display", () => {
+  const s = { mode: 1, modeParam: '{"kgLX1":454,"kgLX2":227,"lbLX1":1000,"lbLX2":500}' };
+  assert.deepEqual(M.lbValues(s), { kgLX1: 1000, kgLX2: 500 });
+  assert.deepEqual(M.lbValues({ mode: 1, modeParam: '{"kgLX1":454,"kgLX2":227,"lbLX1":2000}' }), {});   // lb far from kg: ignored
+  assert.deepEqual(M.lbValues({ mode: 0, modeParam: "{}" }), {});
+  assert.deepEqual(M.lbValues({ mode: 3, modeParam: '{"kgSD1":500}' }), {});
 });

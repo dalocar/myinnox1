@@ -9,6 +9,11 @@
    `lbTL1/2` (tenths of a lb, = tenths of kg x 2.20462, e.g. 150 -> lbLX1 331), next to the kg keys; metric
    accounts write kg only. The kg keys stay the source of truth: the official app labels the kg number
    "lbs" in imperial and stores what is typed as kg, which is wrong. We show and convert correctly.
+   Limits measured in the official app's editor (typing extremes into each field; the server enforces none):
+     Eccentric 3-60 kg, Concentric 2-59 kg, Spring initial 2-59 kg, max 3-60 kg, length ~0.02-2.5 m,
+     Isokinetic speed 0.1-2.5 m/s. Force steps are 0.5 (in the display unit), length and speed 0.01.
+     The app keeps Concentric below Eccentric (and Max force above Initial) only when you edit the first of
+     each pair; we enforce both pairs in both directions.
    The upstream does not validate any of this (mode 9 and empty params are stored as sent), so
    validation is ours. Unknown modes (official library courses use 6) are kept untouched. */
 (function (root) {
@@ -17,22 +22,20 @@
   const MODES = [
     { id: 0, key: "standard", label: "Standard", fields: [] },
     { id: 1, key: "eccentric", label: "Eccentric", fields: [
-      { key: "kgLX1", lb: "lbLX1", label: "Eccentric (kg)", unit: "force", def: 150 },
-      { key: "kgLX2", lb: "lbLX2", label: "Concentric (kg)", unit: "force", def: 100 },
+      { key: "kgLX1", lb: "lbLX1", label: "Eccentric (kg)", unit: "force", def: 150, min: 30, max: 600, step: 0.5 },
+      { key: "kgLX2", lb: "lbLX2", label: "Concentric (kg)", unit: "force", def: 100, min: 20, max: 590, step: 0.5 },
     ] },
     { id: 2, key: "spring", label: "Spring", fields: [
-      { key: "kgTL1", lb: "lbTL1", label: "Initial force (kg)", unit: "force", def: 100 },
-      { key: "kgTL2", lb: "lbTL2", label: "Max force (kg)", unit: "force", def: 150 },
-      { key: "kgTL3", label: "Length (m)", unit: "mm", def: 500 },
+      { key: "kgTL1", lb: "lbTL1", label: "Initial force (kg)", unit: "force", def: 100, min: 20, max: 590, step: 0.5 },
+      { key: "kgTL2", lb: "lbTL2", label: "Max force (kg)", unit: "force", def: 150, min: 30, max: 600, step: 0.5 },
+      { key: "kgTL3", label: "Length (m)", unit: "mm", def: 500, min: 20, max: 2500, step: 0.01 },
     ] },
     { id: 3, key: "isokinetic", label: "Isokinetic", fields: [
-      { key: "kgSD1", label: "Speed (m/s)", unit: "mm", def: 500 },
+      { key: "kgSD1", label: "Speed (m/s)", unit: "mm", def: 500, min: 100, max: 2500, step: 0.01 },
     ] },
   ];
-  // Caps in stored units. Force: 60 kg (= 132.3 lb) per cable, the OMNI X1 Pro's published 120 kg total over two
-  // cables; an eccentric force of exactly 600 was also saved by the official app. Length and speed: sanity caps
-  // (5 m, 5 m/s), the real limits are unknown.
-  const MAX = { force: 600, mm: 5000 };
+  // Per-field ranges (min/max, stored units) are measured in the official app, see above; 60 kg (132.3 lb) is
+  // the top force, in line with the OMNI X1 Pro's published 120 kg over two cables.
   const LB_PER_KG = 2.20462;
   const toLbTenths = (kgTenths) => Math.round(kgTenths * LB_PER_KG);
   const DESCRIPTIONS = {
@@ -60,29 +63,50 @@
     } catch { return {}; }
   }
 
-  const clean = (v, fallback, max) => {
+  // Round to an integer and clamp into the field's range; invalid input returns the fallback.
+  const clean = (v, fallback, f) => {
     const n = Math.round(Number(v));
-    return Number.isFinite(n) && n >= 0 ? (max ? Math.min(n, max) : n) : fallback;
+    if (!Number.isFinite(n)) return fallback;
+    return f ? Math.min(f.max, Math.max(f.min, n)) : Math.max(0, n);
   };
-  const cap = (f) => MAX[f.unit];
 
   // values(step) -> {key: stored integer} for the step's mode, defaults for missing/invalid keys.
   function values(step) {
     const m = modeOf(step);
     const param = parseParam(step && step.modeParam);
     const out = {};
-    if (m.def) m.def.fields.forEach((f) => { out[f.key] = clean(param[f.key], f.def, cap(f)); });
+    if (m.def) m.def.fields.forEach((f) => { out[f.key] = clean(param[f.key], f.def, f); });
     return out;
   }
 
-  // serialize(modeId, values, {lb}) -> compact JSON string with only that mode's keys; Standard -> "{}".
+  // Pairs that must stay ordered, enforced both ways: Concentric at least 1 kg below Eccentric; Spring max at
+  // least 0.5 kg above Initial. Both stay inside their ranges (Eccentric min 3 kg, Initial max 59 kg).
+  function pairs(modeId, o) {
+    if (modeId === 1) o.kgLX2 = Math.min(o.kgLX2, o.kgLX1 - 10);
+    if (modeId === 2) o.kgTL2 = Math.max(o.kgTL2, o.kgTL1 + 5);
+    return o;
+  }
+
+  // serialize(modeId, values, {lb, prev, typed}) -> compact JSON string with only that mode's keys; Standard -> "{}".
   // With lb, the force fields are also written in pounds (lb keys after the kg keys, like the official app).
+  // An lb value is kept as is when it already matches the kg value (within 0.1 lb): `typed` ({kgKey: lb tenths},
+  // what the user just typed) first, then `prev` (the step's current param). Otherwise it is derived from kg, so
+  // a typed 40.0 lb stays 400 instead of drifting to 399 through the 0.1 kg storage.
   function serialize(modeId, vals, opts) {
     const def = byId(modeId);
     if (!def || !def.fields.length) return "{}";
     const o = {};
-    def.fields.forEach((f) => { o[f.key] = clean(vals && vals[f.key], f.def, cap(f)); });
-    if (opts && opts.lb) def.fields.forEach((f) => { if (f.lb) o[f.lb] = toLbTenths(o[f.key]); });
+    def.fields.forEach((f) => { o[f.key] = clean(vals && vals[f.key], f.def, f); });
+    pairs(def.id, o);
+    if (opts && opts.lb) {
+      const typed = opts.typed || {}, prev = opts.prev || {};
+      def.fields.forEach((f) => {
+        if (!f.lb) return;
+        const want = toLbTenths(o[f.key]);
+        const near = (x) => x !== undefined && x !== null && x !== "" && Number.isFinite(Number(x)) && Math.abs(Number(x) - want) <= 1;
+        o[f.lb] = near(typed[f.key]) ? Math.round(Number(typed[f.key])) : near(prev[f.lb]) ? Math.round(Number(prev[f.lb])) : want;
+      });
+    }
     return JSON.stringify(o);
   }
 
@@ -99,7 +123,7 @@
     const lb = wantsLb(step, opts);
     const had = modeOf(step).id === def.id ? values(step) : {};
     step.mode = def.id;
-    step.modeParam = serialize(def.id, had, { lb });
+    step.modeParam = serialize(def.id, had, { lb, prev: parseParam(step.modeParam) });
     return step;
   }
 
@@ -109,8 +133,8 @@
     if (!m.def || !m.def.fields.some((f) => f.key === key)) return step;
     const v = values(step);
     const f = m.def.fields.find((x) => x.key === key);
-    v[key] = clean(stored, v[key], cap(f));
-    step.modeParam = serialize(m.id, v, { lb: wantsLb(step, opts) });
+    v[key] = clean(stored, v[key], f);
+    step.modeParam = serialize(m.id, v, { lb: wantsLb(step, opts), prev: parseParam(step.modeParam), typed: opts && opts.typed && { [key]: opts.typed } });
     return step;
   }
 
@@ -128,6 +152,21 @@
     return n;
   }
 
+  // lbValues(step) -> {kgKey: lb tenths} for force fields whose stored lb key matches the kg value (within 0.1 lb);
+  // what an imperial editor shows, so a typed 100.0 lb reads back 100.0 and not 100.1.
+  function lbValues(step) {
+    const m = modeOf(step);
+    const out = {};
+    if (!m.def) return out;
+    const param = parseParam(step && step.modeParam);
+    const v = values(step);
+    m.def.fields.forEach((f) => {
+      const x = param[f.lb];
+      if (f.lb && x !== null && x !== "" && Number.isFinite(Number(x)) && Math.abs(Number(x) - toLbTenths(v[f.key])) <= 1) out[f.key] = Number(x);
+    });
+    return out;
+  }
+
   // Does the raw modeParam lack a usable value (or a matching lb value, see wantsLb) for any field of the step's known non-standard mode?
   // Such a step shows defaults in the editor; it is rewritten with them on save (see normalize).
   function needsNormalize(step, opts) {
@@ -137,28 +176,17 @@
     const usable = (x) => x !== null && x !== "" && Number.isFinite(Number(x)) && Number(x) >= 0;
     if (m.def.fields.some((f) => !usable(param[f.key]))) return true;
     // lb keys wanted but missing, or out of step with the kg value (more than 0.1 lb off)
-    return wantsLb(step, opts) && m.def.fields.some((f) => f.lb && !(usable(param[f.lb]) && Math.abs(Number(param[f.lb]) - toLbTenths(clean(param[f.key], f.def, cap(f)))) <= 1));
+    return wantsLb(step, opts) && m.def.fields.some((f) => f.lb && !(usable(param[f.lb]) && Math.abs(Number(param[f.lb]) - toLbTenths(clean(param[f.key], f.def, f))) <= 1));
   }
 
   // Write the effective values (stored ones, defaults for missing/invalid) back to modeParam. Returns true if changed.
   function normalize(step, opts) {
     if (!needsNormalize(step, opts)) return false;
-    step.modeParam = serialize(modeOf(step).id, values(step), { lb: wantsLb(step, opts) });
+    step.modeParam = serialize(modeOf(step).id, values(step), { lb: wantsLb(step, opts), prev: parseParam(step.modeParam) });
     return true;
   }
 
-  // -> null when fine, else an English i18n key. Checks the values the editor shows (defaults included).
-  function validate(step) {
-    const m = modeOf(step);
-    if (!m.def || !m.def.fields.length) return null;
-    const v = values(step);
-    for (const f of m.def.fields) {
-      if (!(v[f.key] > 0)) return f.unit === "force" ? "Enter a force above zero." : "Enter a value above zero.";
-    }
-    return null;
-  }
-
-  const api = { MODES, MAX, LB_PER_KG, toLbTenths, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, needsNormalize, normalize, validate };
+  const api = { MODES, LB_PER_KG, toLbTenths, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, needsNormalize, normalize, lbValues };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.StepModeCore = api;
 })(typeof window !== "undefined" ? window : globalThis);

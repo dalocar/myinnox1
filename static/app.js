@@ -394,17 +394,26 @@ function modeSelect(step, i) {
 function modeOpts() { return { imperial: Units.isImperial() }; }
 
 // Force fields show in the account unit (stored in tenths of a kg); length and speed in m and m/s (stored in mm).
-function modeFieldValue(f, stored) { return f.unit === "force" ? Units.fmtTenths(stored) : (stored / 1000).toFixed(2); }
-function modeFieldStored(f, shown) { return f.unit === "force" ? Units.toTenths(shown) : Math.round(shown * 1000); }
+// `lb` is the stored lb tenths for this field when known (see StepModeCore.lbValues): shown as is on imperial accounts.
+function modeFieldValue(f, stored, lb) {
+  if (f.unit !== "force") return (stored / 1000).toFixed(2);
+  return lb !== undefined && Units.isImperial() ? (lb / 10).toFixed(1) : Units.fmtTenths(stored);
+}
+// Typed values snap to the field's step in the display unit (0.5 kg or lb, 0.01 m or m/s), as the official app does.
+function modeFieldStored(f, shown) {
+  const snapped = Math.round(shown / f.step) * f.step;
+  return f.unit === "force" ? Units.toTenths(snapped) : Math.round(snapped * 1000);
+}
 
 function modeFieldsCell(step, i) {
   const m = StepModeCore.modeOf(step);
   const vals = StepModeCore.values(step);
+  const lbs = StepModeCore.lbValues(step);
   const progress = hasProgressIcon(step) ? progressButton(step, i) : "";
   return `<div class="mode-fields">${m.def.fields.map((f) => {
     const id = `step-${i}-${f.key}`;
     const label = f.unit === "force" ? Units.text(t(f.label)) : t(f.label);
-    return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="0" max="${modeFieldValue(f, StepModeCore.MAX[f.unit])}" step="${f.unit === "force" ? "0.1" : "0.05"}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key])}"></label>`;
+    return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="${modeFieldValue(f, f.min)}" max="${modeFieldValue(f, f.max)}" step="${f.step}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key], lbs[f.key])}"></label>`;
   }).join("")}${progress}</div>`;
 }
 
@@ -461,13 +470,22 @@ function renderStepsTable() {
     });
     tr.querySelectorAll("input[data-mode-key]").forEach((input) => {
       const f = StepModeCore.modeOf(step).def.fields.find((x) => x.key === input.dataset.modeKey);
-      input.addEventListener("input", () => {
+      // Commit when the field is left or Enter is pressed (not per keystroke: a half-typed "4" of "40" would
+      // trip the pair rules and pull the other field down for good), like the official app.
+      input.addEventListener("change", () => {
         const val = Number(input.value);
-        // Empty, non-numeric or negative input counts as 0, so saving is blocked instead of keeping the old value.
-        StepModeCore.setValue(step, f.key, input.value === "" || !Number.isFinite(val) || val < 0 ? 0 : modeFieldStored(f, val), modeOpts());
+        // Empty, non-numeric or negative input is clamped up to the field's minimum.
+        const bad = input.value === "" || !Number.isFinite(val) || val < 0;
+        // On imperial accounts the typed pounds are kept in the lb key too (kg is derived, as in the official app).
+        const typed = !bad && f.unit === "force" && Units.isImperial() ? Math.round(Math.round(val / f.step) * f.step * 10) : null;
+        StepModeCore.setValue(step, f.key, bad ? 0 : modeFieldStored(f, val), Object.assign(modeOpts(), typed ? { typed } : {}));
+        // Show what is kept (range, step and pair rules applied) for every field: editing one can move another.
+        const kept = StepModeCore.values(step), lbs = StepModeCore.lbValues(step);
+        tr.querySelectorAll("input[data-mode-key]").forEach((el) => {
+          const g = StepModeCore.modeOf(step).def.fields.find((x) => x.key === el.dataset.modeKey);
+          el.value = modeFieldValue(g, kept[g.key], lbs[g.key]);
+        });
       });
-      // Show what is actually kept (limits applied) once the field is left.
-      input.addEventListener("change", () => { input.value = modeFieldValue(f, StepModeCore.values(step)[f.key]); });
     });
     tr.querySelectorAll("input[data-field]").forEach((input) => {
       input.addEventListener("input", () => {
@@ -705,10 +723,6 @@ if ($("steps-mode-all")) $("steps-mode-all").addEventListener("change", (e) => {
 async function saveProgram() {
   if (!currentCourse) return;
   (currentCourse.mainStepList || []).forEach((s) => StepModeCore.normalize(s, modeOpts()));
-  for (const [i, s] of (currentCourse.mainStepList || []).entries()) {
-    const bad = StepModeCore.validate(s);
-    if (bad) { toast(t("Step {n} ({name}): {msg}", { n: i + 1, name: s.actionName || "", msg: t(bad) }), true); return; }
-  }
   currentCourse.name = $("edit-name").value;
   // Recompute rough aggregates so the list view isn't wildly stale. Not an exact
   // formula match to the server's own calculation, purely cosmetic.

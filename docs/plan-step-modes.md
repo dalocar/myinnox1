@@ -29,12 +29,24 @@ Other facts:
 
 ## Units and limits
 
-Findings from programs saved by the official app on an imperial account (profile `unit` 1) and from its binary:
+Measured in the official app's program editor on 2026-11-18 (typing extreme values into each field), plus programs it saved:
 
-- **Stored values are always kg.** A default Eccentric step is `{"kgLX1":150,"kgLX2":100,...}` (15.0 / 10.0 kg). A step where 60 was typed into the field is `kgLX1: 600`, so what the app calls "lbs" in imperial is the kg number with the wrong label: it does not convert on the way in or out. Standard weights (`sideWeight`) are converted correctly by the app; only the mode fields are not.
-- **Imperial accounts also get lb keys**, written after the kg keys: `lbLX1`, `lbLX2` (Eccentric) and `lbTL1`, `lbTL2` (Spring), in tenths of a lb (`round(tenthsKg x 2.20462)`: 150 -> 331, 100 -> 220, 600 -> 1323). Metric accounts write kg only. The binary also names `kgYT1/2` and `lbYT1/2` (assisted pull-up), which the editor does not offer. Length and speed have no lb key.
-- **The webapp** shows and edits force fields in the account unit, converts to tenths of a kg (0.1 kg granularity, so 100 lb is stored as 45.4 kg and shows as 100.1 lb), keeps the kg keys as the source of truth, and writes or refreshes the lb keys on imperial accounts and on any step that already has them. So a program saved here shows the right numbers here; the official app will show the kg number labelled "lbs" for it, as it does for its own programs.
-- **Maximum force: 60 kg (132.3 lb) per cable.** The OMNI X1 Pro is published at 120 kg total over two cables, and the official app saved `kgLX1: 600`. The editor caps force fields there (stored 600). Length (5 m) and speed (5 m/s) caps are sanity limits only; their real limits are unknown. The API itself enforces none of this.
+| Field | Range (kg) | Step |
+|---|---|---|
+| Eccentric (`kgLX1`) | 3 to 60 | 0.5 |
+| Concentric (`kgLX2`) | 2 to 59 | 0.5 |
+| Spring initial force (`kgTL1`) | 2 to 59 | 0.5 |
+| Spring max force (`kgTL2`) | 3 to 60 | 0.5 |
+| Spring length (`kgTL3`) | about 0.02 to 2.5 m | 0.01 m |
+| Isokinetic speed (`kgSD1`) | 0.1 to 2.5 m/s | 0.01 m/s |
+
+Typed values are clamped when the field is left or Enter is pressed (a value like 12.37 becomes 12.5). The app keeps Concentric at least 1 kg below Eccentric, and Spring max at least 0.5 kg above initial, but only when the first field of the pair is edited: Concentric 40 next to Eccentric 3 was accepted when typed last. The webapp enforces both pairs in both directions. The server enforces none of this: values like 1000 kg or `mode` 9 were stored as sent. The 60 kg top force also matches the OMNI X1 Pro's published 120 kg over two cables. Not pinned down: the exact minimum Spring length (typing 0 gave 0.02 m, but 0.10 m showed up once after other fields changed).
+
+Units, from programs saved by the official app on an imperial account (profile `unit` 1):
+
+- **Stored values are kg tenths, plus lb keys.** Imperial accounts also write the force fields in pounds, after the kg keys: `lbLX1/2` (Eccentric) and `lbTL1/2` (Spring), in tenths of a lb. A typed 61.0 lb is stored as `lbTL1: 610` and `kgTL1: 277` (27.7 kg, 0.1 kg granularity); a typed 15.0 / 14.0 lb as `lbLX1: 150, lbLX2: 140` and `kgLX1: 68, kgLX2: 64`. Metric accounts write kg only. The binary also names `kgYT1/2` and `lbYT1/2` (assisted pull-up), which the editor does not offer. Length and speed have no lb key.
+- **Reported, not reproduced:** the official editor shows the kg defaults (15.0 / 10.0) with a "lbs" label on imperial accounts, instead of 33.1 / 22.0 lb. The account was switched to metric before this could be checked; it also shows a mixed picture (its detail view labels the same values in kg, and Standard weight stays labelled kg).
+- **The webapp** shows and edits force fields in the account unit, converts to tenths of a kg, keeps the lb key exactly as typed (so 100.0 lb reads back 100.0, not 100.1), and writes or refreshes lb keys on imperial accounts and on any step that already has them. Programs saved here show the right numbers here; the official app may label them differently.
 
 ## Setting it from the webapp
 

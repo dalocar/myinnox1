@@ -327,7 +327,7 @@ function weightModeInline(step) {
   const badge = mode.label ? `<span class="wm-badge wm-badge-inline wm-${mode.key}" aria-hidden="true">${escapeHtml(t(mode.label))}</span>` : "";
   // Combined: same live total under the name on narrow screens (aria-hidden; the one in the
   // weight cell stays the accessible, announced copy and is only visually hidden there).
-  const total = mode.key === "combined" ? `<span class="wm-total wm-total-inline" aria-hidden="true">${escapeHtml(combinedTotalText(step))}</span>` : "";
+  const total = mode.key === "combined" && StepModeCore.modeOf(step).id === 0 ? `<span class="wm-total wm-total-inline" aria-hidden="true">${escapeHtml(combinedTotalText(step))}</span>` : "";
   return badge + total;
 }
 
@@ -378,9 +378,63 @@ function openStepProgress(step, i) {
   });
 }
 
+// ---------- training mode (Standard / Eccentric / Spring / Isokinetic), see step-mode-core.js ----------
+// Mode select under the exercise name. Steps without a weight (sideNum 0) and unknown modes (official
+// courses use 6) get no select: the stored mode is left untouched, unknown ones are just named.
+function modeSelect(step, i) {
+  const m = StepModeCore.modeOf(step);
+  if (!StepModeCore.supportsMode(step)) return "";
+  if (!m.known) return `<span class="step-mode-note">${escapeHtml(t("Mode {n}", { n: m.id }))}</span>`;
+  const opts = StepModeCore.MODES.map((d) => `<option value="${d.id}"${d.id === m.id ? " selected" : ""}>${escapeHtml(t(d.label))}</option>`).join("");
+  const label = t("Mode for {name}", { name: step.actionName || t("step {n}", { n: i + 1 }) });
+  return `<select class="step-mode" id="step-${i}-mode" data-step-mode="${i}" aria-label="${escapeHtml(label)}" title="${escapeHtml(t(StepModeCore.DESCRIPTIONS[m.id]))}">${opts}</select>`;
+}
+
+// Imperial accounts also get the lb keys the official app writes (kg stays the source of truth).
+function modeOpts() { return { imperial: Units.isImperial() }; }
+
+// Force fields show in the account unit (stored in tenths of a kg); length and speed in m and m/s (stored in mm).
+// `lb` is the stored lb tenths for this field when known (see StepModeCore.lbValues): shown as is on imperial accounts.
+function modeFieldValue(f, stored, lb) {
+  if (f.unit !== "force") return (stored / 1000).toFixed(2);
+  return lb !== undefined && Units.isImperial() ? (lb / 10).toFixed(1) : Units.fmtTenths(stored);
+}
+// Typed values snap to the field's step in the display unit (0.5 kg or lb, 0.01 m or m/s), as the official app does.
+function modeFieldStored(f, shown) {
+  const snapped = Math.round(shown / f.step) * f.step;
+  return f.unit === "force" ? Units.toTenths(snapped) : Math.round(snapped * 1000);
+}
+
+function modeFieldsCell(step, i) {
+  const m = StepModeCore.modeOf(step);
+  const vals = StepModeCore.values(step);
+  const lbs = StepModeCore.lbValues(step);
+  const progress = hasProgressIcon(step) ? progressButton(step, i) : "";
+  return `<div class="mode-fields">${m.def.fields.map((f) => {
+    const id = `step-${i}-${f.key}`;
+    const label = f.unit === "force" ? Units.text(t(f.label)) : t(f.label);
+    return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="${modeFieldValue(f, f.min)}" max="${modeFieldValue(f, f.max)}" step="${f.step}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key], lbs[f.key])}"></label>`;
+  }).join("")}${progress}</div>`;
+}
+
+// Is this step's load column showing mode fields instead of the plain weight?
+function usesModeFields(step) {
+  const m = StepModeCore.modeOf(step);
+  return StepModeCore.supportsMode(step) && m.known && m.id !== 0;
+}
+
+function renderBulkModeSelect() {
+  const sel = $("steps-mode-all");
+  if (!sel) return;
+  sel.innerHTML = `<option value="">${escapeHtml(t("Choose…"))}</option>` +
+    StepModeCore.MODES.map((d) => `<option value="${d.id}">${escapeHtml(t(d.label))}</option>`).join("");
+  sel.value = "";
+}
+
 function renderStepsTable() {
   const body = $("steps-body");
   body.innerHTML = "";
+  renderBulkModeSelect();
   // Warm-up and stretch steps (added in the official app) are kept untouched on save but not editable here.
   const extra = [["Warm up", currentCourse.warmUpStepList], ["Stretch", currentCourse.relaxStepList]]
     .filter(([, l]) => Array.isArray(l) && l.length)
@@ -396,9 +450,9 @@ function renderStepsTable() {
       </td>
       <td class="thumb">${step.picUrl ? `<img src="${escapeHtml(step.picUrl)}" alt="">` : ""}</td>
       <td class="num">${i + 1}</td>
-      <td class="action-name">${escapeHtml(step.actionName || "")}${weightModeInline(step)}</td>
+      <td class="action-name">${escapeHtml(step.actionName || "")}${weightModeInline(step)}${modeSelect(step, i)}</td>
       <td class="field" data-label="${t("Reps")}"><input type="number" min="0" id="step-${i}-count" name="step-${i}-count" data-field="count" aria-label="${t("Reps")}" value="${step.count ?? 0}"></td>
-      <td class="field" data-label="${escapeHtml(Units.text(t("Load (kg)")))}">${weightCell(step, i)}</td>
+      <td class="field${usesModeFields(step) ? " mode-cell" : ""}" data-label="${escapeHtml(usesModeFields(step) ? t("Mode settings") : Units.text(t("Load (kg)")))}">${usesModeFields(step) ? modeFieldsCell(step, i) : weightCell(step, i)}</td>
       <td class="field" data-label="${t("Rest (s)")}"><input type="number" min="0" id="step-${i}-restTime" name="step-${i}-restTime" data-field="restTime" aria-label="${t("Rest (s)")}" value="${step.restTime ?? 0}"></td>
       <td class="field" data-label="${t("Sets")}"><input type="number" min="0" id="step-${i}-groupNum" name="step-${i}-groupNum" data-field="groupNum" aria-label="${t("Sets")}" value="${step.groupNum ?? 0}"></td>
       <td class="row-actions">
@@ -407,7 +461,33 @@ function renderStepsTable() {
     `;
     const thumb = tr.querySelector("td.thumb img");
     if (thumb) thumb.addEventListener("click", () => openLightbox(step.picUrl, step.videoUrl, step.actionName));
-    tr.querySelectorAll("input").forEach((input) => {
+    const modeSel = tr.querySelector("[data-step-mode]");
+    if (modeSel) modeSel.addEventListener("change", () => {
+      StepModeCore.setMode(step, Number(modeSel.value), modeOpts());
+      renderStepsTable();
+      const again = $(`step-${i}-mode`);
+      if (again) again.focus({ preventScroll: true });
+    });
+    tr.querySelectorAll("input[data-mode-key]").forEach((input) => {
+      const f = StepModeCore.modeOf(step).def.fields.find((x) => x.key === input.dataset.modeKey);
+      // Commit when the field is left or Enter is pressed (not per keystroke: a half-typed "4" of "40" would
+      // trip the pair rules and pull the other field down for good), like the official app.
+      input.addEventListener("change", () => {
+        const val = Number(input.value);
+        // Empty, non-numeric or negative input is clamped up to the field's minimum.
+        const bad = input.value === "" || !Number.isFinite(val) || val < 0;
+        // On imperial accounts the typed pounds are kept in the lb key too (kg is derived, as in the official app).
+        const typed = !bad && f.unit === "force" && Units.isImperial() ? Math.round(Math.round(val / f.step) * f.step * 10) : null;
+        StepModeCore.setValue(step, f.key, bad ? 0 : modeFieldStored(f, val), Object.assign(modeOpts(), typed ? { typed } : {}));
+        // Show what is kept (range, step and pair rules applied) for every field: editing one can move another.
+        const kept = StepModeCore.values(step), lbs = StepModeCore.lbValues(step);
+        tr.querySelectorAll("input[data-mode-key]").forEach((el) => {
+          const g = StepModeCore.modeOf(step).def.fields.find((x) => x.key === el.dataset.modeKey);
+          el.value = modeFieldValue(g, kept[g.key], lbs[g.key]);
+        });
+      });
+    });
+    tr.querySelectorAll("input[data-field]").forEach((input) => {
       input.addEventListener("input", () => {
         const val = Number(input.value);
         if (!Number.isFinite(val)) return;
@@ -631,8 +711,18 @@ function addStepFromAction(a) {
   renderStepsTable();
 }
 
+if ($("steps-mode-all")) $("steps-mode-all").addEventListener("change", (e) => {
+  const id = e.target.value;
+  if (id === "" || !currentCourse) return;
+  const n = StepModeCore.setModeAll(currentCourse.mainStepList, Number(id), modeOpts());
+  e.target.value = "";
+  renderStepsTable();
+  toast(n ? t("Mode set on {n} steps.", { n }) : t("No steps changed."));
+});
+
 async function saveProgram() {
   if (!currentCourse) return;
+  (currentCourse.mainStepList || []).forEach((s) => StepModeCore.normalize(s, modeOpts()));
   currentCourse.name = $("edit-name").value;
   // Recompute rough aggregates so the list view isn't wildly stale. Not an exact
   // formula match to the server's own calculation, purely cosmetic.

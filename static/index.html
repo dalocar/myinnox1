@@ -145,6 +145,10 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
             </button>
           </div>
         </div>
+        <div class="steps-toolbar">
+          <label for="steps-mode-all">Set mode for all steps</label>
+          <select id="steps-mode-all"></select>
+        </div>
         <div class="table-wrap"><table id="steps-table">
           <thead><tr><th class="reorder-col"></th><th></th><th>#</th><th>Action</th><th class="fld">Reps</th><th class="fld"><span data-unit-src="Load (kg)">Load (kg)</span></th><th class="fld">Rest (s)</th><th class="fld">Sets</th><th></th></tr></thead>
           <tbody id="steps-body"></tbody>
@@ -444,7 +448,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
     </div>
   </div>
 
-  <div id="toast" hidden></div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
 </div>
 <footer id="app-version" class="app-version" hidden></footer>
 <script src="i18n-de.js"></script>
@@ -456,6 +460,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="i18n.js"></script>
 <script src="units-core.js"></script>
 <script src="weight-mode-core.js"></script>
+<script src="step-mode-core.js"></script>
 <script src="units.js"></script>
 <script src="theme-core.js"></script>
 <script src="theme.js"></script>

@@ -71,6 +71,7 @@ Open http://localhost:8787 and log in with your INNODIGYM account.
   stopped/ended plans are view-only (server restriction). API details:
   [`docs/plan-api.md`](docs/plan-api.md).
 - **Actions** — view/add/delete your custom actions (listed with `action/list?custom=true`, since the default list omits them; each shows its weight mode, Per side or Combined). In the program editor every step shows the same weight mode next to its weight, taken from the exercise's `sideNum` (1 = Per side, 2 = Combined, 0 = no weight). For Combined exercises (both cables) the entered weight is per cable and a readout shows the total (x2).
+- **Training modes** — in the program editor every step with a weight has a mode select: Standard, Eccentric, Spring or Isokinetic (the same four as the official app). Non-standard modes replace the load with the mode's own fields (stored in the step's `mode` and `modeParam`, see `docs/plan-step-modes.md`), and a "Set mode for all steps" shortcut applies one mode to every weighted step.
 - **History** — a Summary dashboard: today's goal rings (consume / duration),
   Latest Record, This Week, This Month and Total cards, the three latest Medals
   and the Recent Activity list (volume, kcal, duration; delete kept). Numbers

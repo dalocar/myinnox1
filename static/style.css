@@ -1114,3 +1114,22 @@ input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow:
 @media (max-width: 400px) {
   .ai-actions button { flex-basis: 100%; }
 }
+
+/* ---------- step training mode ---------- */
+.steps-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; flex-wrap: wrap; }
+.steps-toolbar label { font-size: 13px; color: var(--muted); }
+.step-mode { display: block; margin-top: 4px; min-height: 32px; padding: 2px 8px; font-size: 13px; max-width: 100%; }
+.step-mode-note { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+table#steps-table td.mode-cell { width: auto; }
+.mode-fields { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.mode-field { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.mode-field span { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.mode-field input { width: 84px; }
+@media (max-width: 719px) {
+  table#steps-table td.field.mode-cell { grid-row: 3; grid-column: 1 / -1; }
+  table#steps-table td.mode-cell::before { display: none; }
+  .mode-fields { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .mode-field { flex: 1 1 80px; }
+  .mode-field input { width: 100%; }
+  .step-mode { min-height: 38px; }
+}

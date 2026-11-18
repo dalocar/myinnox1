@@ -1121,15 +1121,24 @@ input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow:
 .step-mode { display: block; margin-top: 4px; min-height: 32px; padding: 2px 8px; font-size: 13px; max-width: 100%; }
 .step-mode-note { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
 table#steps-table td.mode-cell { width: auto; }
-.mode-fields { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
-.mode-field { display: flex; flex-direction: column; gap: 2px; text-align: left; }
-.mode-field span { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
-.mode-field input { width: 84px; }
+/* Desktop: the mode's fields sit side by side (label above each input, progress icon at the end), and the
+   cells of that row are bottom-aligned so Reps, Rest, Sets and the mode inputs share one baseline. */
+.mode-fields { display: flex; flex-direction: row; align-items: flex-end; justify-content: center; gap: 8px; }
+.mode-field { display: flex; flex-direction: column; gap: 2px; text-align: center; }
+.mode-field { width: 72px; }
+.mode-field span { font-size: 11px; line-height: 1.15; color: var(--muted); font-weight: 600; overflow-wrap: anywhere; }
+.mode-field input { width: 72px; }
+.mode-fields .step-progress-btn { flex: none; }
+table#steps-table tr.has-mode td.field { vertical-align: bottom; }
+@media (min-width: 720px) and (max-width: 1023px) {
+  .mode-fields { gap: 6px; }
+  .mode-field, .mode-field input { width: 62px; }
+}
 @media (max-width: 719px) {
   table#steps-table td.field.mode-cell { grid-row: 3; grid-column: 1 / -1; }
   table#steps-table td.mode-cell::before { display: none; }
   .mode-fields { flex-direction: row; flex-wrap: wrap; gap: 8px; }
-  .mode-field { flex: 1 1 80px; }
+  .mode-field { width: auto; flex: 1 1 80px; }
   .mode-field input { width: 100%; }
   .step-mode { min-height: 38px; }
 }

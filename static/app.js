@@ -461,6 +461,7 @@ function renderStepsTable() {
     `;
     const thumb = tr.querySelector("td.thumb img");
     if (thumb) thumb.addEventListener("click", () => openLightbox(step.picUrl, step.videoUrl, step.actionName));
+    tr.classList.toggle("has-mode", usesModeFields(step));
     const modeSel = tr.querySelector("[data-step-mode]");
     if (modeSel) modeSel.addEventListener("change", () => {
       StepModeCore.setMode(step, Number(modeSel.value), modeOpts());

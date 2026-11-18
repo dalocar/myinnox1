@@ -14,7 +14,8 @@ test("serialize fills defaults and drops other modes' keys", () => {
   assert.equal(M.serialize(1, {}), '{"kgLX1":150,"kgLX2":100}');
   assert.equal(M.serialize(3, { kgSD1: 800, kgLX1: 999 }), '{"kgSD1":800}');
   assert.equal(M.serialize(1, { kgLX1: "x", kgLX2: "y" }), '{"kgLX1":150,"kgLX2":100}');
-  assert.equal(M.serialize(1, { kgLX1: -5, kgLX2: 100 }), '{"kgLX1":30,"kgLX2":20}');
+  assert.equal(M.serialize(1, { kgLX1: -5, kgLX2: 100 }), '{"kgLX1":30,"kgLX2":100}');
+  assert.equal(M.serialize(1, { kgLX1: -5, kgLX2: 100 }, { pairs: true }), '{"kgLX1":30,"kgLX2":20}');
   assert.equal(M.serialize(1, { kgLX1: 200.4 }), '{"kgLX1":200,"kgLX2":100}');
 });
 
@@ -209,4 +210,27 @@ test("lbValues returns the stored lb values that match the kg value, for display
   assert.deepEqual(M.lbValues({ mode: 1, modeParam: '{"kgLX1":454,"kgLX2":227,"lbLX1":2000}' }), {});   // lb far from kg: ignored
   assert.deepEqual(M.lbValues({ mode: 0, modeParam: "{}" }), {});
   assert.deepEqual(M.lbValues({ mode: 3, modeParam: '{"kgSD1":500}' }), {});
+});
+
+test("official imperial programs with untouched defaults carry only lb keys: read them, do not overwrite them", () => {
+  const e = { mode: 1, modeParam: '{"lbLX1":150,"lbLX2":200}' };            // 15.0 / 20.0 lb, no kg keys
+  assert.deepEqual(M.values(e), { kgLX1: 68, kgLX2: 91 });                    // shown as 15.0 / 20.0 lb via lbValues
+  assert.deepEqual(M.lbValues(e), { kgLX1: 150, kgLX2: 200 });
+  assert.equal(M.needsNormalize(e, { imperial: true }), true);                // kg keys are missing: added on save
+  assert.equal(M.normalize(e, { imperial: true }), true);
+  assert.deepEqual(JSON.parse(e.modeParam), { kgLX1: 68, kgLX2: 91, lbLX1: 150, lbLX2: 200 });   // lb kept as is, no pair rule
+  assert.equal(M.normalize(e, { imperial: true }), false);
+  const s = { mode: 2, modeParam: '{"lbTL1":200,"lbTL2":250,"kgTL3":500}' };
+  assert.deepEqual(M.values(s), { kgTL1: 91, kgTL2: 113, kgTL3: 500 });
+  M.normalize(s, { imperial: true });
+  assert.deepEqual(JSON.parse(s.modeParam), { kgTL1: 91, kgTL2: 113, kgTL3: 500, lbTL1: 200, lbTL2: 250 });
+});
+
+test("editing one field of an lb-only step keeps the other fields' typed pounds", () => {
+  const e = { mode: 1, modeParam: '{"lbLX1":150,"lbLX2":200}' };
+  M.setValue(e, "kgLX1", 454, { imperial: true, typed: 1000 });               // user types 100.0 lb
+  const p = JSON.parse(e.modeParam);
+  assert.equal(p.lbLX1, 1000);
+  assert.equal(p.lbLX2, 200);                                                 // untouched field keeps its 20.0 lb
+  assert.equal(p.kgLX2, Math.min(91, 444));                                   // within the new pair limit (ecc 45.4 kg)
 });

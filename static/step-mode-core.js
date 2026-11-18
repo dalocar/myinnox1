@@ -14,6 +14,9 @@
      Isokinetic speed 0.1-2.5 m/s. Force steps are 0.5 (in the display unit), length and speed 0.01.
      The app keeps Concentric below Eccentric (and Max force above Initial) only when you edit the first of
      each pair; we enforce both pairs in both directions.
+   Imperial accounts with untouched defaults: the official app saves ONLY the lb keys ({"lbLX1":150,"lbLX2":200}
+   for Eccentric, {"lbTL1":200,"lbTL2":250,"kgTL3":500} for Spring: its imperial defaults are 15/20 lb and 20/25 lb,
+   not the metric 15/10 kg converted), no kg keys. Once a value is edited it writes both. We read lb when kg is missing.
    The upstream does not validate any of this (mode 9 and empty params are stored as sent), so
    validation is ours. Unknown modes (official library courses use 6) are kept untouched. */
 (function (root) {
@@ -70,12 +73,20 @@
     return f ? Math.min(f.max, Math.max(f.min, n)) : Math.max(0, n);
   };
 
-  // values(step) -> {key: stored integer} for the step's mode, defaults for missing/invalid keys.
+  const usableNum = (x) => x !== null && x !== undefined && x !== "" && Number.isFinite(Number(x)) && Number(x) >= 0;
+  const fromLbTenths = (lb) => Math.round(Number(lb) / LB_PER_KG);
+
+  // values(step) -> {key: stored integer} for the step's mode (tenths of kg for forces, mm for length and speed).
+  // The kg key wins; when it is missing the lb key is used (the official app saves ONLY lb keys when an imperial
+  // account leaves the defaults untouched, e.g. {"lbLX1":150,"lbLX2":200}); otherwise the default.
   function values(step) {
     const m = modeOf(step);
     const param = parseParam(step && step.modeParam);
     const out = {};
-    if (m.def) m.def.fields.forEach((f) => { out[f.key] = clean(param[f.key], f.def, f); });
+    if (m.def) m.def.fields.forEach((f) => {
+      const fallback = f.lb && usableNum(param[f.lb]) ? fromLbTenths(param[f.lb]) : f.def;
+      out[f.key] = clean(param[f.key], fallback, f);
+    });
     return out;
   }
 
@@ -87,7 +98,7 @@
     return o;
   }
 
-  // serialize(modeId, values, {lb, prev, typed}) -> compact JSON string with only that mode's keys; Standard -> "{}".
+  // serialize(modeId, values, {lb, prev, typed, pairs}) -> compact JSON string with only that mode's keys; Standard -> "{}".
   // With lb, the force fields are also written in pounds (lb keys after the kg keys, like the official app).
   // An lb value is kept as is when it already matches the kg value (within 0.1 lb): `typed` ({kgKey: lb tenths},
   // what the user just typed) first, then `prev` (the step's current param). Otherwise it is derived from kg, so
@@ -97,7 +108,7 @@
     if (!def || !def.fields.length) return "{}";
     const o = {};
     def.fields.forEach((f) => { o[f.key] = clean(vals && vals[f.key], f.def, f); });
-    pairs(def.id, o);
+    if (opts && opts.pairs) pairs(def.id, o);
     if (opts && opts.lb) {
       const typed = opts.typed || {}, prev = opts.prev || {};
       def.fields.forEach((f) => {
@@ -123,7 +134,7 @@
     const lb = wantsLb(step, opts);
     const had = modeOf(step).id === def.id ? values(step) : {};
     step.mode = def.id;
-    step.modeParam = serialize(def.id, had, { lb, prev: parseParam(step.modeParam) });
+    step.modeParam = serialize(def.id, had, { lb, prev: parseParam(step.modeParam), pairs: true });
     return step;
   }
 
@@ -134,7 +145,7 @@
     const v = values(step);
     const f = m.def.fields.find((x) => x.key === key);
     v[key] = clean(stored, v[key], f);
-    step.modeParam = serialize(m.id, v, { lb: wantsLb(step, opts), prev: parseParam(step.modeParam), typed: opts && opts.typed && { [key]: opts.typed } });
+    step.modeParam = serialize(m.id, v, { lb: wantsLb(step, opts), prev: parseParam(step.modeParam), typed: opts && opts.typed && { [key]: opts.typed }, pairs: true });
     return step;
   }
 
@@ -173,10 +184,10 @@
     const m = modeOf(step);
     if (!m.def || !m.def.fields.length) return false;
     const param = parseParam(step.modeParam);
-    const usable = (x) => x !== null && x !== "" && Number.isFinite(Number(x)) && Number(x) >= 0;
+    const usable = usableNum;
     if (m.def.fields.some((f) => !usable(param[f.key]))) return true;
     // lb keys wanted but missing, or out of step with the kg value (more than 0.1 lb off)
-    return wantsLb(step, opts) && m.def.fields.some((f) => f.lb && !(usable(param[f.lb]) && Math.abs(Number(param[f.lb]) - toLbTenths(clean(param[f.key], f.def, f))) <= 1));
+    return wantsLb(step, opts) && m.def.fields.some((f) => f.lb && !(usable(param[f.lb]) && Math.abs(Number(param[f.lb]) - toLbTenths(values(step)[f.key])) <= 1));
   }
 
   // Write the effective values (stored ones, defaults for missing/invalid) back to modeParam. Returns true if changed.
@@ -186,7 +197,7 @@
     return true;
   }
 
-  const api = { MODES, LB_PER_KG, toLbTenths, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, needsNormalize, normalize, lbValues };
+  const api = { MODES, LB_PER_KG, fromLbTenths, toLbTenths, DESCRIPTIONS, byId, modeOf, values, serialize, setMode, setValue, supportsMode, setModeAll, needsNormalize, normalize, lbValues };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.StepModeCore = api;
 })(typeof window !== "undefined" ? window : globalThis);

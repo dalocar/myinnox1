@@ -101,6 +101,7 @@ test("values are capped at sane limits", () => {
   const s = { mode: 1, modeParam: "{}" };
   M.setValue(s, "kgLX1", 999999990);
   assert.equal(M.values(s).kgLX1, M.MAX.force);
+  assert.equal(M.MAX.force, 600);
   const t = { mode: 3, modeParam: "{}" };
   M.setValue(t, "kgSD1", 99999999);
   assert.equal(t.modeParam, '{"kgSD1":' + M.MAX.mm + '}');
@@ -112,4 +113,56 @@ test("a zero value is kept as zero (not replaced by the default) so validate can
   M.setValue(s, "kgLX1", 0);
   assert.equal(M.values(s).kgLX1, 0);
   assert.equal(M.validate(s), "Enter a force above zero.");
+});
+
+test("imperial: lb keys are written after the kg keys, as the official app does", () => {
+  assert.equal(M.toLbTenths(150), 331);
+  assert.equal(M.toLbTenths(100), 220);
+  assert.equal(M.toLbTenths(600), 1323);
+  assert.equal(M.serialize(1, { kgLX1: 150, kgLX2: 100 }, { lb: true }), '{"kgLX1":150,"kgLX2":100,"lbLX1":331,"lbLX2":220}');
+  assert.equal(M.serialize(2, {}, { lb: true }), '{"kgTL1":100,"kgTL2":150,"kgTL3":500,"lbTL1":220,"lbTL2":331}');
+  assert.equal(M.serialize(3, {}, { lb: true }), '{"kgSD1":500}');
+  assert.equal(M.serialize(1, {}), '{"kgLX1":150,"kgLX2":100}');
+});
+
+test("imperial accounts get lb keys on setMode and setValue; metric accounts do not", () => {
+  const s = { mode: 0, modeParam: "{}" };
+  M.setMode(s, 1, { imperial: true });
+  assert.equal(s.modeParam, '{"kgLX1":150,"kgLX2":100,"lbLX1":331,"lbLX2":220}');
+  M.setValue(s, "kgLX1", 600, { imperial: true });
+  assert.equal(s.modeParam, '{"kgLX1":600,"kgLX2":100,"lbLX1":1323,"lbLX2":220}');
+  const m = { mode: 0, modeParam: "{}" };
+  M.setMode(m, 1, { imperial: false });
+  assert.equal(m.modeParam, '{"kgLX1":150,"kgLX2":100}');
+});
+
+test("a step that already has lb keys keeps them in step with kg, even on a metric account", () => {
+  const s = { mode: 1, modeParam: '{"kgLX1":150,"kgLX2":100,"lbLX1":331,"lbLX2":220}' };
+  M.setValue(s, "kgLX1", 200, { imperial: false });
+  assert.equal(s.modeParam, '{"kgLX1":200,"kgLX2":100,"lbLX1":441,"lbLX2":220}');
+  M.setMode(s, 2, { imperial: false });
+  assert.equal(s.modeParam, '{"kgTL1":100,"kgTL2":150,"kgTL3":500,"lbTL1":220,"lbTL2":331}');
+});
+
+test("normalize adds missing or stale lb keys: always when the step has some, otherwise on imperial accounts only", () => {
+  const plain = { mode: 1, modeParam: '{"kgLX1":600,"kgLX2":100}' };
+  assert.equal(M.needsNormalize(plain, { imperial: false }), false);
+  assert.equal(M.normalize(plain, { imperial: false }), false);
+  assert.equal(M.normalize(plain, { imperial: true }), true);
+  assert.equal(plain.modeParam, '{"kgLX1":600,"kgLX2":100,"lbLX1":1323,"lbLX2":220}');
+  assert.equal(M.normalize(plain, { imperial: true }), false);
+  // like the official app's own program: lbLX1 only
+  const half = { mode: 1, modeParam: '{"kgLX1":600,"kgLX2":100,"lbLX1":1323}' };
+  assert.equal(M.normalize(half, { imperial: false }), true);
+  assert.equal(half.modeParam, '{"kgLX1":600,"kgLX2":100,"lbLX1":1323,"lbLX2":220}');
+  const stale = { mode: 1, modeParam: '{"kgLX1":200,"kgLX2":100,"lbLX1":331,"lbLX2":220}' };
+  assert.equal(M.normalize(stale, { imperial: false }), true);
+  assert.equal(stale.modeParam, '{"kgLX1":200,"kgLX2":100,"lbLX1":441,"lbLX2":220}');
+  const std = { mode: 0, modeParam: "{}" };
+  assert.equal(M.normalize(std, { imperial: true }), false);
+});
+
+test("the official app's saved imperial eccentric data is already consistent", () => {
+  const a = { mode: 1, modeParam: '{"kgLX1":150,"kgLX2":100,"kgTL1":100,"kgTL2":150,"kgTL3":500,"kgSD1":500,"lbLX1":331,"lbLX2":220}' };
+  assert.equal(M.needsNormalize(a, { imperial: true }), false);
 });

@@ -27,6 +27,15 @@ Other facts:
 - Official library courses use `mode` 6 on 444 steps. Its meaning is unknown and it is not selectable in the editor.
 - Defaults the app applies when switching to a mode: Eccentric 15.0 / 10.0 kg, Spring 10.0 / 15.0 kg / 0.50 m, Isokinetic 0.50 m/s.
 
+## Units and limits
+
+Findings from programs saved by the official app on an imperial account (profile `unit` 1) and from its binary:
+
+- **Stored values are always kg.** A default Eccentric step is `{"kgLX1":150,"kgLX2":100,...}` (15.0 / 10.0 kg). A step where 60 was typed into the field is `kgLX1: 600`, so what the app calls "lbs" in imperial is the kg number with the wrong label: it does not convert on the way in or out. Standard weights (`sideWeight`) are converted correctly by the app; only the mode fields are not.
+- **Imperial accounts also get lb keys**, written after the kg keys: `lbLX1`, `lbLX2` (Eccentric) and `lbTL1`, `lbTL2` (Spring), in tenths of a lb (`round(tenthsKg x 2.20462)`: 150 -> 331, 100 -> 220, 600 -> 1323). Metric accounts write kg only. The binary also names `kgYT1/2` and `lbYT1/2` (assisted pull-up), which the editor does not offer. Length and speed have no lb key.
+- **The webapp** shows and edits force fields in the account unit, converts to tenths of a kg (0.1 kg granularity, so 100 lb is stored as 45.4 kg and shows as 100.1 lb), keeps the kg keys as the source of truth, and writes or refreshes the lb keys on imperial accounts and on any step that already has them. So a program saved here shows the right numbers here; the official app will show the kg number labelled "lbs" for it, as it does for its own programs.
+- **Maximum force: 60 kg (132.3 lb) per cable.** The OMNI X1 Pro is published at 120 kg total over two cables, and the official app saved `kgLX1: 600`. The editor caps force fields there (stored 600). Length (5 m) and speed (5 m/s) caps are sanity limits only; their real limits are unknown. The API itself enforces none of this.
+
 ## Setting it from the webapp
 
 `course/custom/save` accepts `mode` and `modeParam` directly: a step changed to mode 1 with `{"kgLX1":200,"kgLX2":120}` was stored as sent, and the official app then showed it correctly (a Spring step written through the API showed Initial 8.0, Max 20.0, Length 0.60). The server does not validate: mode 9 and an empty `modeParam` for mode 1 were both stored without error. The webapp must therefore validate itself.

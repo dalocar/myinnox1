@@ -390,6 +390,9 @@ function modeSelect(step, i) {
   return `<select class="step-mode" id="step-${i}-mode" data-step-mode="${i}" aria-label="${escapeHtml(label)}" title="${escapeHtml(t(StepModeCore.DESCRIPTIONS[m.id]))}">${opts}</select>`;
 }
 
+// Imperial accounts also get the lb keys the official app writes (kg stays the source of truth).
+function modeOpts() { return { imperial: Units.isImperial() }; }
+
 // Force fields show in the account unit (stored in tenths of a kg); length and speed in m and m/s (stored in mm).
 function modeFieldValue(f, stored) { return f.unit === "force" ? Units.fmtTenths(stored) : (stored / 1000).toFixed(2); }
 function modeFieldStored(f, shown) { return f.unit === "force" ? Units.toTenths(shown) : Math.round(shown * 1000); }
@@ -401,7 +404,7 @@ function modeFieldsCell(step, i) {
   return `<div class="mode-fields">${m.def.fields.map((f) => {
     const id = `step-${i}-${f.key}`;
     const label = f.unit === "force" ? Units.text(t(f.label)) : t(f.label);
-    return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="0" step="${f.unit === "force" ? "0.1" : "0.05"}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key])}"></label>`;
+    return `<label class="mode-field" for="${id}"><span>${escapeHtml(label)}</span><input type="number" min="0" max="${modeFieldValue(f, StepModeCore.MAX[f.unit])}" step="${f.unit === "force" ? "0.1" : "0.05"}" id="${id}" name="${id}" data-mode-key="${f.key}" value="${modeFieldValue(f, vals[f.key])}"></label>`;
   }).join("")}${progress}</div>`;
 }
 
@@ -451,7 +454,7 @@ function renderStepsTable() {
     if (thumb) thumb.addEventListener("click", () => openLightbox(step.picUrl, step.videoUrl, step.actionName));
     const modeSel = tr.querySelector("[data-step-mode]");
     if (modeSel) modeSel.addEventListener("change", () => {
-      StepModeCore.setMode(step, Number(modeSel.value));
+      StepModeCore.setMode(step, Number(modeSel.value), modeOpts());
       renderStepsTable();
       const again = $(`step-${i}-mode`);
       if (again) again.focus({ preventScroll: true });
@@ -461,7 +464,7 @@ function renderStepsTable() {
       input.addEventListener("input", () => {
         const val = Number(input.value);
         // Empty, non-numeric or negative input counts as 0, so saving is blocked instead of keeping the old value.
-        StepModeCore.setValue(step, f.key, input.value === "" || !Number.isFinite(val) || val < 0 ? 0 : modeFieldStored(f, val));
+        StepModeCore.setValue(step, f.key, input.value === "" || !Number.isFinite(val) || val < 0 ? 0 : modeFieldStored(f, val), modeOpts());
       });
       // Show what is actually kept (limits applied) once the field is left.
       input.addEventListener("change", () => { input.value = modeFieldValue(f, StepModeCore.values(step)[f.key]); });
@@ -693,7 +696,7 @@ function addStepFromAction(a) {
 if ($("steps-mode-all")) $("steps-mode-all").addEventListener("change", (e) => {
   const id = e.target.value;
   if (id === "" || !currentCourse) return;
-  const n = StepModeCore.setModeAll(currentCourse.mainStepList, Number(id));
+  const n = StepModeCore.setModeAll(currentCourse.mainStepList, Number(id), modeOpts());
   e.target.value = "";
   renderStepsTable();
   toast(n ? t("Mode set on {n} steps.", { n }) : t("No steps changed."));
@@ -701,7 +704,7 @@ if ($("steps-mode-all")) $("steps-mode-all").addEventListener("change", (e) => {
 
 async function saveProgram() {
   if (!currentCourse) return;
-  (currentCourse.mainStepList || []).forEach((s) => StepModeCore.normalize(s));
+  (currentCourse.mainStepList || []).forEach((s) => StepModeCore.normalize(s, modeOpts()));
   for (const [i, s] of (currentCourse.mainStepList || []).entries()) {
     const bad = StepModeCore.validate(s);
     if (bad) { toast(t("Step {n} ({name}): {msg}", { n: i + 1, name: s.actionName || "", msg: t(bad) }), true); return; }

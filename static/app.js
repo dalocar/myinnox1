@@ -11,6 +11,25 @@ const TIP_URL = "https://buymeacoffee.com/dalocar";
   document.querySelectorAll(".tip-link").forEach((a) => { a.href = TIP_URL; a.hidden = false; });
   document.querySelectorAll(".tip-card").forEach((c) => { c.hidden = false; });
 })();
+// Gentle support nudge: shown once after a few logged-in visits, snoozed on "Maybe later",
+// never shown again once the coffee link was clicked anywhere.
+const SUPPORT_VISITS_KEY = "innodigym_visits", SUPPORT_SNOOZE_KEY = "innodigym_support_snooze", SUPPORT_DONE_KEY = "innodigym_support_done";
+function initSupportNudge() {
+  if (!TIP_URL) return;
+  document.querySelectorAll(".tip-link").forEach((a) => a.addEventListener("click", () => store.set(SUPPORT_DONE_KEY, "1")));
+  const banner = $("support-banner");
+  if (!banner || store.get(SUPPORT_DONE_KEY)) return;
+  const visits = (parseInt(store.get(SUPPORT_VISITS_KEY), 10) || 0) + 1;
+  store.set(SUPPORT_VISITS_KEY, String(visits));
+  const snoozedUntil = parseInt(store.get(SUPPORT_SNOOZE_KEY), 10) || 0;
+  if (visits < 4 || Date.now() < snoozedUntil) return;
+  banner.hidden = false;
+  $("support-banner-later").onclick = () => {
+    store.set(SUPPORT_SNOOZE_KEY, String(Date.now() + 45 * 86400000));
+    banner.hidden = true;
+  };
+  $("support-banner-link").onclick = () => { banner.hidden = true; };
+}
 const TOKEN_KEY = "innodigym_token";
 const EMAIL_KEY = "innodigym_email";
 const DEFAULT_COVER = "https://power.renhesports.com/filestore/power/course/COVER_RACK_1_4.jpg";
@@ -84,6 +103,7 @@ function showLoggedIn(email) {
   $("tabs").hidden = false;
   $("main-section").hidden = false;
   currentEmail = email;
+  initSupportNudge();
   $("userbar").innerHTML = `<span id="user-email">${escapeHtml(email)}</span> <button id="logout-btn" class="secondary">${escapeHtml(t("Log out"))}</button>`;
   $("logout-btn").onclick = async () => {
     store.remove(TOKEN_KEY);

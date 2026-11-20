@@ -43,6 +43,10 @@
     // ----- theme picker -----
     "Theme": "Tema",
     "Buy me a coffee": "Invítame a un café",
+    "Support MyInnoX1": "Apoya MyInnoX1",
+    "Enjoying MyInnoX1? It's free and independent. A coffee helps keep it running.": "¿Te gusta MyInnoX1? Es gratis e independiente. Un café ayuda a mantenerlo en marcha.",
+    "Enjoying your stats? MyInnoX1 is free and independent. A coffee helps keep it running.": "¿Te gustan tus estadísticas? MyInnoX1 es gratis e independiente. Un café ayuda a mantenerlo en marcha.",
+    "Maybe later": "Quizá luego",
     "Free, independent and unofficial. If it saves you time, a coffee helps keep it running. Nothing is locked behind it.": "Gratis, independiente y no oficial. Si te ahorra tiempo, un café ayuda a mantenerlo en marcha. Nada queda bloqueado tras ello.",
     "Saved on this device only.": "Se guarda solo en este dispositivo.",
     "Auto": "Automático",

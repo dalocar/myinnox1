@@ -43,7 +43,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        if self.path.startswith("/api/"):
+        if self.path.startswith("/api/ping"):
+            # Support-nudge counters: only collected on the deployed site.
+            self.send_response(204)
+            self.end_headers()
+        elif self.path.startswith("/api/"):
             self.proxy("POST")
         else:
             self.send_error(404)

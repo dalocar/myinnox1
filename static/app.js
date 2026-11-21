@@ -13,7 +13,7 @@ const TIP_URL = "https://buymeacoffee.com/dalocar";
 })();
 // Anonymous support-nudge counters (event name + placement only; see functions/api/ping.js).
 function trackSupport(event, where) {
-  try { navigator.sendBeacon(`/api/ping?e=${event}&w=${where || ""}`); } catch { /* analytics never breaks the app */ }
+  try { fetch(`/api/ping?e=${event}&w=${where || ""}`, { method: "POST", keepalive: true }).catch(() => {}); } catch { /* analytics never breaks the app */ }
 }
 function tipPlacement(a) {
   if (a.closest("#support-banner")) return "banner";

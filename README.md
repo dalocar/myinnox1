@@ -148,6 +148,14 @@ fixtures) are in `qa/`.
 - Your session token is kept in the browser's `localStorage`, scoped to
   `localhost:8787`. The server process itself stores nothing — it doesn't
   even see your password beyond relaying the one login request.
+- **Anonymous support counters (deployed site only).** The "Buy me a coffee"
+  banner and links send a tiny event (`banner_shown`, `banner_later` or
+  `coffee_click`, plus which placement) to `functions/api/ping.js`, which counts
+  it in Cloudflare Workers Analytics Engine. No account, email, token, IP or
+  user agent is read or stored. To enable it, bind an Analytics Engine dataset
+  to the Pages project as `SUPPORT_EVENTS`; without the binding the endpoint
+  does nothing. Example query:
+  `SELECT blob1 AS event, blob2 AS place, SUM(_sample_interval) AS n FROM <dataset> GROUP BY event, place`.
 
 ## Notes on the API's quirks
 

@@ -150,12 +150,13 @@ fixtures) are in `qa/`.
   even see your password beyond relaying the one login request.
 - **Anonymous support counters (deployed site only).** The "Buy me a coffee"
   banner and links send a tiny event (`banner_shown`, `banner_later` or
-  `coffee_click`, plus which placement) to `functions/api/ping.js`, which counts
-  it in Cloudflare Workers Analytics Engine. No account, email, token, IP or
+  `coffee_click`, plus which placement and the two-letter country code Cloudflare
+  derives from the connection) to `functions/api/ping.js`, which counts
+  it in Cloudflare Workers Analytics Engine. No account, email, token, IP address or
   user agent is read or stored. To enable it, bind an Analytics Engine dataset
   to the Pages project as `SUPPORT_EVENTS`; without the binding the endpoint
   does nothing. Example query:
-  `SELECT blob1 AS event, blob2 AS place, SUM(_sample_interval) AS n FROM <dataset> GROUP BY event, place`.
+  `SELECT blob1 AS event, blob2 AS place, blob3 AS country, SUM(_sample_interval) AS n FROM <dataset> GROUP BY event, place, country`.
 
 ## Notes on the API's quirks
 

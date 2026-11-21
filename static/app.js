@@ -11,12 +11,28 @@ const TIP_URL = "https://buymeacoffee.com/dalocar";
   document.querySelectorAll(".tip-link").forEach((a) => { a.href = TIP_URL; a.hidden = false; });
   document.querySelectorAll(".tip-card").forEach((c) => { c.hidden = false; });
 })();
+// Anonymous support-nudge counters (event name + placement only; see functions/api/ping.js).
+function trackSupport(event, where) {
+  try { fetch(`/api/ping?e=${event}&w=${where || ""}`, { method: "POST", keepalive: true }).catch(() => {}); } catch { /* analytics never breaks the app */ }
+}
+function tipPlacement(a) {
+  if (a.closest("#support-banner")) return "banner";
+  if (a.closest(".footer-tip")) return "footer";
+  if (a.closest("#tab-history")) return "history";
+  if (a.closest("#tab-fitness")) return "fitness";
+  if (a.closest("#tab-profile")) return "profile";
+  if (a.closest("#login-section")) return "login";
+  return "";
+}
 // Gentle support nudge: shown once after a few logged-in visits, snoozed on "Maybe later",
 // never shown again once the coffee link was clicked anywhere.
-const SUPPORT_VISITS_KEY = "innodigym_visits", SUPPORT_SNOOZE_KEY = "innodigym_support_snooze", SUPPORT_DONE_KEY = "innodigym_support_done";
+const SUPPORT_VISITS_KEY = "innodigym_visits", SUPPORT_SNOOZE_KEY = "innodigym_support_snooze", SUPPORT_DONE_KEY = "innodigym_support_done", SUPPORT_SEEN_KEY = "innodigym_support_seen";
+document.querySelectorAll(".tip-link").forEach((a) => a.addEventListener("click", () => {
+  store.set(SUPPORT_DONE_KEY, "1");
+  trackSupport("coffee_click", tipPlacement(a));
+}));
 function initSupportNudge() {
   if (!TIP_URL) return;
-  document.querySelectorAll(".tip-link").forEach((a) => a.addEventListener("click", () => store.set(SUPPORT_DONE_KEY, "1")));
   const banner = $("support-banner");
   if (!banner || store.get(SUPPORT_DONE_KEY)) return;
   const visits = (parseInt(store.get(SUPPORT_VISITS_KEY), 10) || 0) + 1;
@@ -24,9 +40,13 @@ function initSupportNudge() {
   const snoozedUntil = parseInt(store.get(SUPPORT_SNOOZE_KEY), 10) || 0;
   if (visits < 4 || Date.now() < snoozedUntil) return;
   banner.hidden = false;
+  // Count an impression at most once a day per browser so reloads don't inflate it.
+  const today = new Date().toISOString().slice(0, 10);
+  if (store.get(SUPPORT_SEEN_KEY) !== today) { store.set(SUPPORT_SEEN_KEY, today); trackSupport("banner_shown", "banner"); }
   $("support-banner-later").onclick = () => {
     store.set(SUPPORT_SNOOZE_KEY, String(Date.now() + 45 * 86400000));
     banner.hidden = true;
+    trackSupport("banner_later", "banner");
   };
   $("support-banner-link").onclick = () => { banner.hidden = true; };
 }

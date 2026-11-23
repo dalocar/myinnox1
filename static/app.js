@@ -44,7 +44,7 @@ function initSupportNudge() {
   const today = new Date().toISOString().slice(0, 10);
   if (store.get(SUPPORT_SEEN_KEY) !== today) { store.set(SUPPORT_SEEN_KEY, today); trackSupport("banner_shown", "banner"); }
   $("support-banner-later").onclick = () => {
-    store.set(SUPPORT_SNOOZE_KEY, String(Date.now() + 45 * 86400000));
+    store.set(SUPPORT_SNOOZE_KEY, String(Date.now() + 15 * 86400000));
     banner.hidden = true;
     trackSupport("banner_later", "banner");
   };

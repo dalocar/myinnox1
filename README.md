@@ -21,6 +21,10 @@ docker compose up --build
 
 Open http://localhost:8787 and log in with your INNODIGYM account.
 
+**One-click start and stop (Windows and macOS).** If you prefer not to keep Docker running, double-click the
+launcher in `launcher/windows` or `launcher/macos`. It starts Docker, runs the app on this computer only, opens
+the browser and adds a Stop button. See [`launcher/README.md`](launcher/README.md).
+
 ## Features
 
 - **Languages** — header dropdown with the same eight languages as the official

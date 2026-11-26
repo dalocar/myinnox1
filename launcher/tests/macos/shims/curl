@@ -1,0 +1,15 @@
+#!/bin/bash
+# Fake curl: the app answers only while the engine and our container are running.
+F=${FAKE_DIR:?FAKE_DIR is not set}
+printf 'curl :: %s\n' "$*" >>"$F/calls"
+for url in "$@"; do :; done
+running=0
+[ -f "$F/engine_up" ] && [ "$(cat "$F/container/status" 2>/dev/null)" = running ] && running=1
+case $url in
+  */_local/status)
+    [ "$running" = 1 ] && [ ! -f "$F/status_never" ] || exit 7
+    echo '{"app": "myinnox1", "launcher": true}' ;;
+  *)
+    [ -f "$F/port_taken" ] && exit "$(cat "$F/port_taken")"
+    [ "$running" = 1 ] || exit 7 ;;
+esac

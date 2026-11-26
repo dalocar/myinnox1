@@ -27,3 +27,33 @@ jobs:
         run: node scripts/check-theme-contrast.js
       - name: Network-surface guard
         run: node scripts/check-external-hosts.js
+      - name: Launcher isolation guard
+        run: node scripts/check-launcher-isolation.js
+      - name: Launcher server tests
+        run: python3 -m unittest discover -s launcher/tests/server -v
+      - name: Launcher Compose files
+        run: node launcher/tests/compose/check.js
+
+  launcher-macos:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: macOS launcher tests
+        run: /bin/bash launcher/tests/macos/run.sh
+
+  launcher-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Windows launcher tests (Windows PowerShell 5.1)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File launcher/tests/windows/run.ps1
+      - name: Windows launcher tests (PowerShell 7)
+        shell: pwsh
+        run: pwsh -NoProfile -File launcher/tests/windows/run.ps1

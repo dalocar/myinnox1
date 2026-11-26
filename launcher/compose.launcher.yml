@@ -1,0 +1,11 @@
+# Applied only by the launcher scripts, on top of ../docker-compose.yml.
+# Needs Docker Compose 2.24.4 or newer (for !override).
+services:
+  innodigym-editor:
+    ports: !override # replace the base list; without the tag Compose appends to it
+      - "127.0.0.1:8787:8787"
+    restart: "no" # a requested exit must not be restarted
+    init: true # forwards SIGTERM, so `compose down` does not wait 10 s
+    environment:
+      MYINNOX1_LAUNCHER: "1"
+      PYTHONUNBUFFERED: "1" # so `compose logs` shows output when a start fails

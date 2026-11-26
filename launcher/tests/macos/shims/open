@@ -1,0 +1,3 @@
+#!/bin/bash
+# Fake open: records the request, opens nothing.
+printf 'open :: %s\n' "$*" >>"${FAKE_DIR:?FAKE_DIR is not set}/calls"

@@ -385,7 +385,7 @@ table#steps-table td.thumb img, .program-card img.thumb, .action-card img.thumb,
    ========================================================================== */
 @media (max-width: 719px) {
   body { font-size: 16px; }
-  #app { padding: 0 16px calc(var(--tabbar-h) + 32px + env(safe-area-inset-bottom)); }
+  #app { padding: 0 16px 16px; }
   header { padding: 14px 0 12px; }
   header h1 span { display: none; }
   #userbar #user-email { display: none; }
@@ -1025,6 +1025,8 @@ input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow:
 .tip-row { margin: 16px 0 0; text-align: center; }
 .tip-link-quiet { min-height: 32px; font-size: 13px; font-weight: 500; color: var(--muted); }
 .footer-tip { margin: 0 0 24px; }
+/* The fixed mobile tab bar covers the end of the page: keep the footer above it. */
+@media (max-width: 719px) { .footer-tip { margin-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom)); } }
 .tip-contextual { margin: 20px 0 0; }
 .support-banner {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 10px 14px;

@@ -1,0 +1,14 @@
+#!/bin/bash
+# Fake rdctl.
+F=${FAKE_DIR:?FAKE_DIR is not set}
+printf 'rdctl :: %s\n' "$*" >>"$F/calls"
+case ${1:-} in
+  list-settings) [ -f "$F/rdctl_open" ] || exit 1; echo '{}' ;;
+  start)
+    [ -f "$F/fail_engine_start" ] && exit 1
+    [ -f "$F/engine_never_ready" ] || : >"$F/engine_up"
+    [ -f "$F/context_after_start" ] && cp "$F/context_after_start" "$F/context"
+    exit 0 ;;
+  shutdown) [ -f "$F/fail_engine_stop" ] && exit 1; rm -f "$F/engine_up" ;;
+  *) exit 64 ;;
+esac

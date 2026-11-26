@@ -7,6 +7,14 @@ unchanged and stores and logs nothing. Changes to the proxy, to any code that
 reads `localStorage`, or to anything that adds a network destination get
 maintainer review.
 
+## Desktop launcher (self-hosted only)
+
+Started through `launcher/`, the app listens on `127.0.0.1` only and `server.py` adds routes under
+`/_local/`, including `POST /_local/stop`. That request can only make the app exit; a script on your
+computer then decides whether to stop the container engine. All `/_local/` routes require a local `Host`;
+the stop request also requires a custom header and a local or absent `Origin`. They do not exist on the hosted site or under plain
+`docker compose up`, which is still reachable from your local network, as before.
+
 ## Reporting a vulnerability
 
 Please **do not open a public issue**. Use GitHub's private vulnerability

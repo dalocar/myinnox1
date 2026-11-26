@@ -34,6 +34,9 @@ const files = [];
   else if (re.test(p) && !SKIP(p)) files.push(p);
 })("static", SCAN[0][1]);
 walkTop("functions", /\.js$/); files.push("server.py");
+// Launcher code runs on the user's computer; its tests are not shipped.
+walkTop("launcher", /\.(js|sh|command|ps1|cmd|yml)$/);
+for (let i = files.length - 1; i >= 0; i--) if (files[i].startsWith(path.join("launcher", "tests"))) files.splice(i, 1);
 function walkTop(d, re) { (function w(p) { const s = fs.statSync(path.join(ROOT, p));
   if (s.isDirectory()) fs.readdirSync(path.join(ROOT, p)).forEach((n) => w(path.join(p, n)));
   else if (re.test(p)) files.push(p); })(d); }
@@ -43,7 +46,7 @@ for (const f of files) {
   for (const m of text.matchAll(/(?:https?|wss?):\/\/([A-Za-z0-9._-]+)/gi)) {
     if (!ALLOWED_HOSTS.has(m[1].toLowerCase())) { console.error(`${f}: host not allowlisted: ${m[1]}`); bad++; }
   }
-  if (f.endsWith(".py")) continue;
+  if (!/\.(js|html|css)$/.test(f)) continue;
   for (const [re, name] of FORBIDDEN_APIS) if (re.test(text)) { console.error(`${f}: uses ${name}`); bad++; }
   for (const m of text.matchAll(/<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)=["']\s*(?:https?:)?\/\/([^/"']+)/gi))
     if (!ALLOWED_HOSTS.has(m[1].toLowerCase())) { console.error(`${f}: external resource from ${m[1]}`); bad++; }

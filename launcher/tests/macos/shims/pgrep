@@ -1,0 +1,11 @@
+#!/bin/bash
+# Fake pgrep: an engine application "runs" only when the test says so.
+F=${FAKE_DIR:?FAKE_DIR is not set}
+printf 'pgrep :: %s\n' "$*" >>"$F/calls"
+[ -f "$F/pgrep_error" ] && exit 3
+[ "${1:-}" = -x ] || exit 2
+case ${2:-} in
+  "Docker Desktop") [ -f "$F/proc_docker" ] && exit 0 ;;
+  "Rancher Desktop") [ -f "$F/proc_rancher" ] && exit 0 ;;
+esac
+exit 1

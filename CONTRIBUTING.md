@@ -8,7 +8,13 @@ INNODIGYM or its vendor.
 2. Run locally: `docker compose up --build` (or `python server.py`), then open
    http://localhost:8787.
 3. Tests: `node --test static/*.test.js`. Put new logic in `<screen>-core.js`
-   with a `.test.js` beside it.
+   with a `.test.js` beside it. For the desktop launcher:
+   `python3 -m unittest discover -s launcher/tests/server`,
+   `node launcher/tests/compose/check.js`,
+   `/bin/bash launcher/tests/macos/run.sh` (macOS) and
+   `pwsh -File launcher/tests/windows/run.ps1`. Launcher changes must keep both
+   systems behaving the same, and nothing in `static/` or `functions/` may
+   depend on them.
 4. New UI text needs entries in every language pack (`static/i18n*.js`).
 5. Use the fixtures in `qa/fixtures` for testing. **Never** commit real
    credentials, tokens, account data or screenshots of your own account.

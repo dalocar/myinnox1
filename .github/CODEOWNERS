@@ -7,6 +7,7 @@
 /Dockerfile               @dalocar
 /docker-compose*.yml      @dalocar
 /scripts/                 @dalocar
+/launcher/                @dalocar
 /static/_headers          @dalocar
 /static/index.html        @dalocar
 /static/app.js            @dalocar

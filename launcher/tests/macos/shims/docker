@@ -1,0 +1,118 @@
+#!/bin/bash
+# Fake docker for the launcher tests. Behaviour is driven by files in $FAKE_DIR.
+F=${FAKE_DIR:?FAKE_DIR is not set}
+printf 'docker ctx=%s host=%s :: %s\n' "${DOCKER_CONTEXT:--}" "${DOCKER_HOST:--}" "$*" >>"$F/calls"
+
+get() { cat "$F/$1" 2>/dev/null; }
+up() { [ -f "$F/engine_up" ]; }
+need_engine() { up || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }; }
+status() { get container/status; }
+exists() { [ -f "$F/container/status" ] && [ "$(status)" != removed ]; }
+
+case "$1 ${2:-}" in
+  "context show")
+    if [ -n "${DOCKER_HOST:-}" ]; then echo default
+    elif [ -n "${DOCKER_CONTEXT:-}" ]; then echo "$DOCKER_CONTEXT"
+    else get context; fi ;;
+  "info "*)
+    # An engine that is still booting becomes ready after this many checks.
+    if [ -f "$F/boots_in" ]; then
+      n=$(($(get boots_in) - 1)); echo "$n" >"$F/boots_in"
+      [ "$n" -gt 0 ] || { : >"$F/engine_up"; rm "$F/boots_in"; }
+    fi
+    if up; then echo "27.0.0"
+    elif [ -f "$F/old_info" ]; then echo ""; exit 0
+    else echo "Cannot connect to the Docker daemon" >&2; exit 1; fi ;;
+  "desktop "*)
+    [ -f "$F/desktop_plugin" ] || { echo "docker: 'desktop' is not a docker command." >&2; exit 1; }
+    case $2 in
+      status)
+        [ -f "$F/desktop_status" ] || exit 1
+        get desktop_status
+        [ -f "$F/fail_desktop_status" ] && exit 1
+        exit 0 ;;
+      start)
+        [ -f "$F/fail_engine_start" ] && exit 1
+        [ -f "$F/engine_never_ready" ] || : >"$F/engine_up"
+        [ -f "$F/context_after_start" ] && cp "$F/context_after_start" "$F/context"
+        exit 0 ;;
+      stop) [ -f "$F/fail_engine_stop" ] && exit 1; rm -f "$F/engine_up" ;;
+      *) exit 1 ;;
+    esac ;;
+  "ps -q")
+    need_engine
+    [ -f "$F/fail_ps_q" ] && exit 1
+    get others
+    [ "$(status)" = running ] && get container/id
+    exit 0 ;;
+  "inspect -f")
+    need_engine
+    [ -f "$F/fail_inspect" ] && exit 1
+    exists && [ "$4" = "$(get container/id)" ] || { echo "No such object" >&2; exit 1; }
+    case $3 in
+      *StartedAt*) echo "$(status) $(get container/exit) $(get container/started)" ;;
+      *) echo "$(status) $(get container/exit)" ;;
+    esac ;;
+  "wait "*)
+    need_engine
+    echo "$PPID" >>"$F/waiters"
+    [ -f "$F/fail_wait" ] && exit 1
+    [ "$2" = "$(get container/id)" ] || exit 1
+    n=0
+    while [ "$(status)" = running ]; do
+      [ -f "$F/abort" ] && exit 1
+      up || { echo "error during connect" >&2; exit 1; }
+      n=$((n + 1)); [ "$n" -lt 300 ] || exit 1
+      sleep 0.2
+      # Recreated: the watched container was removed.
+      [ "$2" = "$(get container/id)" ] || { echo 143; exit 0; }
+    done
+    get container/exit ;;
+  "compose version")
+    [ -f "$F/compose_missing" ] && { echo "docker: 'compose' is not a docker command." >&2; exit 1; }
+    get compose_version ;;
+  "compose -f")
+    [ -f "$3" ] && [ "$4" = -f ] && [ -f "$5" ] || { echo "missing compose file" >&2; exit 1; }
+    shift 5
+    printf '%s\n' "${COMPOSE_PROJECT_NAME-unset}" >>"$F/projects"
+    # Like Compose: a folder name with nothing usable gives an empty project name.
+    folder=${COMPOSE_PROJECT_NAME:-}
+    if [ -z "$folder" ]; then
+      folder=$(dirname "$(grep ':: compose -f' "$F/calls" | tail -1 | sed 's/.*:: compose -f //; s/ -f .*//')")
+      printf '%s' "${folder##*/}" | LC_ALL=C grep -q '[A-Za-z0-9]' || { echo "project name must not be empty" >&2; exit 1; }
+    fi
+    need_engine
+    case $1 in
+      ps)
+        [ -f "$F/fail_compose_ps" ] && exit 1
+        exists && get container/id
+        exit 0 ;;
+      up)
+        if [ -f "$F/up_delay" ]; then
+          i=0
+          while [ "$i" -lt "$(get up_delay)" ]; do
+            i=$((i + 1)); echo "#$i BUILD PROGRESS step $i"; sleep 1
+          done
+        fi
+        [ -f "$F/fail_up" ] && { echo "Error: Bind for 127.0.0.1:8787 failed: port is already allocated" >&2; exit 1; }
+        if ! exists || [ -f "$F/recreate" ]; then
+          n=$(($(get serial) + 1)); echo "$n" >"$F/serial"
+          echo "$(get id_prefix)n$n" >"$F/container/id"
+        fi
+        # A start (not a container left running) gets a new start time.
+        if [ "$(status)" != running ] || [ -f "$F/recreate" ]; then
+          n=$(($(get starts) + 1)); echo "$n" >"$F/starts"
+          printf '2026-02-02T10:00:%02d.5Z\n' "$n" >"$F/container/started"
+        fi
+        echo running >"$F/container/status"; echo 0 >"$F/container/exit" ;;
+      down)
+        [ -f "$F/fail_down" ] && { echo "down failed" >&2; exit 1; }
+        if exists; then
+          [ "$(status)" = running ] && echo 143 >"$F/container/exit"
+          echo removed >"$F/container/status"
+        fi ;;
+      logs) echo "FAKE CONTAINER LOG LINE" ;;
+      *) exit 1 ;;
+    esac ;;
+  *) echo "fake docker: unexpected arguments: $*" >&2; exit 64 ;;
+esac

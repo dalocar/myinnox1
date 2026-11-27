@@ -41,6 +41,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <link rel="stylesheet" href="activity-dashboard.css">
 <link rel="stylesheet" href="activity-explorer.css">
 <link rel="stylesheet" href="activity-report.css">
+<link rel="stylesheet" href="training-export.css">
 <link rel="stylesheet" href="exercise-progress.css">
 </head>
 <body>
@@ -452,6 +453,17 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
   </div>
 
   <!-- PROGRAM CLONE / IMPORT -->
+  <div id="texp-backdrop" hidden>
+    <div id="texp-modal" role="dialog" aria-modal="true" aria-labelledby="texp-title">
+      <div class="row-between">
+        <h3 class="no-margin" id="texp-title" tabindex="-1"></h3>
+        <button id="texp-close" class="secondary" type="button"></button>
+      </div>
+      <div id="texp-body"></div>
+      <p id="texp-live" class="sr-only" aria-live="polite"></p>
+    </div>
+  </div>
+
   <div id="pio-modal-backdrop" hidden>
     <div id="pio-modal" role="dialog" aria-modal="true" aria-labelledby="pio-modal-title">
       <div class="row-between">
@@ -493,6 +505,7 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="vendor/chart.umd.min.js"></script>
 <script src="activity-core.js"></script>
 <script src="exercise-progress-core.js"></script>
+<script src="training-export-core.js"></script>
 <script src="version.js"></script>
 <script src="footer-version.js"></script>
 <script src="app.js"></script>
@@ -507,5 +520,6 @@ if (/\.pages\.dev$/.test(location.hostname)) location.replace("https://myinnox1.
 <script src="activity-dashboard.js"></script>
 <script src="exercise-progress.js"></script>
 <script src="exercise-list.js"></script>
+<script src="training-export.js"></script>
 </body>
 </html>

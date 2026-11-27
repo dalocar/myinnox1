@@ -151,7 +151,7 @@
     if (!r) return;
     destroyCharts();
     r.innerHTML = `<div class="aex">
-      <div class="aex-top"><button type="button" id="aex-back" class="secondary">‹ ${escapeHtml(t("Back"))}</button><h2 id="aex-title" tabindex="-1">${escapeHtml(t("My Activity"))}</h2></div>
+      <div class="aex-top"><button type="button" id="aex-back" class="secondary">‹ ${escapeHtml(t("Back"))}</button><h2 id="aex-title" tabindex="-1">${escapeHtml(t("My Activity"))}</h2>${window.TrainingExportUI ? `<button type="button" id="aex-export" class="secondary aex-export">${escapeHtml(t("Export"))}</button>` : ""}</div>
       <div class="pl-seg aex-seg" id="aex-seg" role="group" aria-label="${escapeHtml(t("Period"))}">${VIEWS.map((v) => `<button type="button" data-view="${v}" aria-pressed="false">${escapeHtml(t(VIEW_LABEL[v]))}</button>`).join("")}</div>
       <div class="aex-nav">
         <button type="button" class="secondary aex-arrow" id="aex-prev">‹</button>
@@ -161,6 +161,9 @@
       <div id="aex-body" class="aex-body"></div>
     </div>`;
     r.querySelector("#aex-back").onclick = back;
+    const ex = r.querySelector("#aex-export");
+    // The period on screen is offered as a quick choice (a single day is too little to analyse).
+    if (ex) ex.onclick = () => window.TrainingExportUI.open({ opener: ex, viewed: S.view === "day" ? null : AC.periodRange(S.view, S.anchor) });
     r.querySelectorAll("#aex-seg button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
     r.querySelector("#aex-prev").onclick = () => go(-1);
     r.querySelector("#aex-next").onclick = () => go(1);

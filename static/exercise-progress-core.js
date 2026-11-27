@@ -104,7 +104,21 @@
         if (w > ex.maxWeight || (w === ex.maxWeight && count > ex.repsAtMax)) { ex.maxWeight = w; ex.repsAtMax = count; }
       }
     }
-    return { v: SCHEMA, recordId, startTime: start.startTime, date: start.date, exercises };
+    return { v: SCHEMA, recordId, startTime: start.startTime, date: start.date, exercises, x: fullDetail(d) };
+  }
+
+  // Everything the training export needs, kept compact. Optional on cached entries (older caches lack it and the export
+  // refetches those), so SCHEMA is unchanged. sets: [actionId, order, weight (tenths), count, seconds, powerMode];
+  // volume is the server's coreData (tenths of kg); null when the answer carries no set list at all.
+  function fullDetail(d) {
+    if (!Array.isArray(d.extData)) return null;
+    const names = {}, sets = [];
+    for (const r of d.extData) {
+      if (!r || typeof r !== "object" || r.actionId == null) continue;
+      if (r.actionName != null) names[String(r.actionId)] = String(r.actionName);
+      sets.push([num(r.actionId), nz(r.sort), nz(r.weight), nz(r.count), nz(r.duration), nz(r.powerMode)]);
+    }
+    return { volume: nz(d.coreData), kcal: nz(d.consume), seconds: nz(d.duration), names, sets };
   }
 
   // ---------- what to chart ----------

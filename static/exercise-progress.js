@@ -62,6 +62,7 @@
     bg: false,        // the running sync was started by the background warm-up (Phase 3)
     overlay: false,   // the screen is shown above the page (program editor) instead of inside the History tab
     syncedAt: 0,
+    exporting: false, // the training export is fetching (the warm-up stays out of its way)
   };
   // The foreground owner of the sync is either the progress screen or the list. The warm-up runs with neither.
   const active = () => S.open || !!S.listener;
@@ -204,15 +205,15 @@
   async function fetchLibrary(store, run, pacer) {
     const cached = await store.getMeta("library");
     if (cached && Array.isArray(cached.items)) S.library = new Map(cached.items);
-    // v2 adds the picture; the names come back in the UI language, so a language switch refreshes them too.
-    if (cached && cached.v === 2 && cached.lang === LANG() && Date.now() - cached.at < 24 * 3600 * 1000) return;
+    // v2 adds the picture, v3 the body parts; the names come back in the UI language, so a language switch refreshes them too.
+    if (cached && cached.v === 3 && cached.lang === LANG() && Date.now() - cached.at < 24 * 3600 * 1000) return;
     try {
       const items = new Map();
-      const add = (arr) => { for (const a of Array.isArray(arr) ? arr : []) if (a && a.id != null) items.set(String(a.id), { sideNum: a.sideNum == null ? null : Number(a.sideNum), countType: a.countType == null ? null : Number(a.countType), name: a.name == null ? "" : String(a.name), pic: typeof a.picUrl === "string" ? a.picUrl : "" }); };
+      const add = (arr) => { for (const a of Array.isArray(arr) ? arr : []) if (a && a.id != null) items.set(String(a.id), { sideNum: a.sideNum == null ? null : Number(a.sideNum), countType: a.countType == null ? null : Number(a.countType), name: a.name == null ? "" : String(a.name), pic: typeof a.picUrl === "string" ? a.picUrl : "", parts: a.muscleParts == null ? "" : a.muscleParts }); };
       add((await pacedCall("/action/list", run, pacer)).data);
       try { add((await pacedCall("/action/list?custom=true", run, pacer)).data); } catch (e) { if (e && (e.pause || e.stopped)) throw e; /* custom actions are optional */ }
       S.library = items;
-      await store.setMeta("library", { v: 2, lang: LANG(), at: Date.now(), items: [...items] });
+      await store.setMeta("library", { v: 3, lang: LANG(), at: Date.now(), items: [...items] });
       scheduleRender(true);
     } catch (e) { if (e && e.pause) throw e; /* keep the cached library, or none: modes stay unknown */ }
   }
@@ -915,7 +916,7 @@
     const d = Core.warmupDecision({
       loggedIn: loggedIn(), hasFullSync: full, lastRunAt: last, now: Date.now(), everyMs: warmEvery(),
       online: !offline(), hidden: typeof document !== "undefined" && document.visibilityState === "hidden",
-      saveData: !!(navigator.connection && navigator.connection.saveData), foreground: active(),
+      saveData: !!(navigator.connection && navigator.connection.saveData), foreground: active() || S.exporting,
       cooldownLeft: Core.requestLog.cooldownUntil - Date.now(),
     });
     warmLog(d.reason);
@@ -927,12 +928,85 @@
     }
     await store.setMeta("warm", { at: Date.now() }).catch(() => {});
     await loadLocal(store);
-    if (tok !== WARM.token || active()) { warmLog("yielded"); return; }
+    if (tok !== WARM.token || active() || S.exporting) { warmLog("yielded"); return; }
     S.bg = true;
     warmLog("start");
     startSync();
   }
   function warmStop() { warmCancel(); if (S.bg) { S.bg = false; stopSync(); } }
+
+  // ---------- training export ----------
+  // The export reuses this cache, pacer, cooldown and Web Lock. It never purges. Only one of export / sync runs at a
+  // time: starting an export supersedes a background sync.
+  async function exportList(shouldStop) {
+    warmStop();
+    const store = await getStore();
+    await loadLocal(store);
+    const cached = [...S.workouts.values()].map((w) => ({ recordId: w.recordId, startTime: w.startTime, name: (w.x && w.x.name) || "" }));
+    if (offline()) return { rows: cached, offline: true, saturated: false };
+    const run = ++S.runId, pacer = Core.makePacer(), names = new Map();
+    S.exporting = true;
+    try {
+      const found = await Core.enumerateRecords({ size: SIZE(), fetchWindow: async (win) => {
+        if (shouldStop && shouldStop()) { const e = new Error("stopped"); e.fatal = true; e.stopped = true; throw e; }
+        const rows = await listWindow(win, run, pacer);
+        for (const r of rows) if (r && typeof r.name === "string") names.set(Number(r.sportRecordId != null ? r.sportRecordId : r.recordId), r.name);
+        return rows;
+      } });
+      return { rows: found.rows.map((r) => ({ recordId: r.recordId, startTime: r.startTime, name: names.get(r.recordId) || "" })), offline: false, saturated: found.saturated };
+    } finally { S.exporting = false; }
+  }
+
+  // rows: [{recordId, name}]. Fetches the full detail of those not cached yet. onProgress(done, total, waitingSeconds).
+  // Resolves {workouts: Map, library: Map|null, missing: number, offline, paused, stopped}.
+  async function exportFetch(rows, opts) {
+    const o = opts || {};
+    warmStop();
+    const store = await getStore();
+    await loadLocal(store);
+    const run = ++S.runId, pacer = Core.makePacer();
+    const stopped = () => run !== S.runId || !!(o.shouldStop && o.shouldStop());
+    const need = rows.filter((r) => { const w = S.workouts.get(r.recordId); return !(w && w.x); });
+    const done = () => rows.length - need.filter((r) => { const w = S.workouts.get(r.recordId); return !(w && w.x); }).length;
+    const report = () => { if (o.onProgress && !stopped()) o.onProgress(done(), rows.length, Math.ceil(Math.max(0, Core.requestLog.cooldownUntil - Date.now()) / 1000)); };
+    let paused = false, tick = 0;
+    S.exporting = true;
+    try {
+      report();
+      tick = setInterval(report, 1000);
+      if (!offline()) {
+        const work = async () => {
+          try { await fetchLibrary(store, run, pacer); } catch (e) { if (e && e.pause) { paused = true; return; } }
+          if (stopped()) return;
+          const res = await Core.runPool(need, async (row) => {
+            await gate.wait();
+            if (stopped()) return;
+            if (flight.has(row.recordId)) await flight.wait(row.recordId);
+            const have = S.workouts.get(row.recordId);
+            if (stopped() || (have && have.x)) return;
+            try {
+              const r = await pacedCall("/sport/record/detail?recordId=" + encodeURIComponent(row.recordId), run, pacer);
+              const sum = Core.summarizeWorkout(r.data);
+              if (!sum || !sum.x) { const e = new Error("Unreadable workout"); e.fatal = true; throw e; }
+              sum.x.name = row.name || "";
+              if (S.store === store) { await store.put(sum); S.workouts.set(sum.recordId, sum); }
+            } catch (e) {
+              if (stopped() || (e && e.stopped)) return;
+              if (Core.isTransport(e)) e.pause = true;
+              throw e;
+            }
+            report();
+          }, { concurrency: Core.CONCURRENCY, shouldStop: stopped });
+          paused = res.paused;
+        };
+        const locks = typeof navigator !== "undefined" && navigator.locks;
+        if (locks && typeof locks.request === "function") await locks.request(LOCK, work); else await work();
+      }
+      const left = rows.length - done();
+      return { workouts: new Map(S.workouts), library: S.library, missing: left, offline: offline(), paused, stopped: stopped() };
+    } finally { clearInterval(tick); S.exporting = false; }
+  }
+  const exportCancel = () => { if (S.exporting) S.runId++; };
 
   // ---------- lifecycle hooks used by app.js ----------
   async function forgetWorkout(recordId) {
@@ -990,6 +1064,7 @@
 
   window.ExerciseProgressUI = {
     open, close, forgetWorkout, clearAll, _state: S,
+    exporter: { list: exportList, fetch: exportFetch, cancel: exportCancel },
     isOpen: () => S.open,
     attachList, detachList, view, paintSync, startSync, resetAnnounce: () => { ann.cd = ""; ann.status = ""; },
     warmUp: { start: warmStart, stop: warmStop, log: () => WARM.log.slice(), running: () => S.bg },

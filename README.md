@@ -109,6 +109,10 @@ the browser and adds a Stop button. See [`launcher/README.md`](launcher/README.m
   picker) for a full-size popup; exercises with a demo video get a playable
   video player instead of a static image.
 
+## What's new
+
+Click the version line in the footer to see what each release added. The list lives in `static/changelog-core.js`.
+
 ## Exporting your training for AI analysis
 
 **Export** (History tab, or My Activity) saves all workouts, or those between two dates, as one Markdown file that any

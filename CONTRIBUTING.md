@@ -16,6 +16,9 @@ INNODIGYM or its vendor.
    systems behaving the same, and nothing in `static/` or `functions/` may
    depend on them.
 4. New UI text needs entries in every language pack (`static/i18n*.js`).
+   If your change adds something users can do, add it to the change log in
+   `static/changelog-core.js` (shown from the footer); leave out support prompts,
+   internal work and small fixes.
 5. Use the fixtures in `qa/fixtures` for testing. **Never** commit real
    credentials, tokens, account data or screenshots of your own account.
 6. CI blocks PRs that add new external hosts or network APIs

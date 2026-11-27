@@ -162,6 +162,8 @@
     if (h) h.textContent = t("Summary");
     const b = el("history-refresh-btn");
     if (b) b.textContent = t("Refresh");
+    const x = el("act-export-btn");
+    if (x) { x.textContent = t("Export"); x.hidden = !window.TrainingExportUI; }
   }
 
   // ---------- today ring ----------
@@ -424,6 +426,7 @@
     if (tgt.closest("#act-medal-btn")) return showMedals();
     if (tgt.closest("#act-exlist-btn")) return openExerciseList();
     if (tgt.closest("#history-refresh-btn")) return loadAll();
+    if (tgt.closest("#act-export-btn") && window.TrainingExportUI) return window.TrainingExportUI.open({ opener: el("act-export-btn") });
     if (tgt.closest("#act-medals-back")) { medalsOpen = false; return DashboardUI.show(); }
     const del = tgt.closest("[data-del]");
     if (del) return removeRecord(S.recs.data && S.recs.data[+del.dataset.del]);
@@ -438,7 +441,8 @@
     // Replacing the markup also drops the legacy refresh button (and its loadHistory listener).
     root.innerHTML = `
       <div class="row-between act-head"><h2 id="act-title"></h2>
-        <button type="button" id="history-refresh-btn" class="secondary"></button></div>
+        <div class="act-headbtns"><button type="button" id="act-export-btn" class="secondary"></button>
+        <button type="button" id="history-refresh-btn" class="secondary"></button></div></div>
       <section class="act-today" aria-labelledby="act-title"><div id="act-today"></div></section>
       <div class="act-cards">
         <section class="act-card" aria-labelledby="act-h-latest"><h3 id="act-h-latest"></h3><div id="act-latest" class="act-body"></div></section>

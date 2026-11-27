@@ -109,6 +109,13 @@ the browser and adds a Stop button. See [`launcher/README.md`](launcher/README.m
   picker) for a full-size popup; exercises with a demo video get a playable
   video player instead of a static image.
 
+## Exporting your training for AI analysis
+
+**Export** (History tab, or My Activity) saves all workouts, or those between two dates, as one Markdown file that any
+AI chat can read: how to read the data, totals, weekly summary, progression per exercise and every set. Pick a question
+and copy the prompt with the data, or download the file. Nothing is sent anywhere by the app. See
+`docs/plan-training-export.md`.
+
 ## Using an AI to build routines
 
 Ask ChatGPT, Claude or any other AI for a routine and import the result. No account, API key or attachment needed.
